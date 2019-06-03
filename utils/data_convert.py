@@ -3,6 +3,7 @@ __author__ = 'SilverQ'
 
 import json
 import os
+from sklearn.model_selection import train_test_split
 
 
 """
@@ -55,9 +56,12 @@ Target Data
 raw_path = '../data/Raw_data'
 
 file_list = os.listdir(raw_path)
+file_list = [file for file in file_list if file.endswith(".txt")]
+
 # print(file_list[0])
 
-data = []
+# data = []
+# content = []
 patnum_idx = dict()
 cpc_idx = dict()
 idx_cpc = dict()
@@ -93,8 +97,41 @@ def cpc_to_idx(cpc_idx, idx_cpc, cpcs):
     return result
 
 
+def data_split(input_data):
+    tr_set, te_set = train_test_split(input_data, test_size=0.2, random_state=1)
+    tr_set, va_set = train_test_split(tr_set, test_size=0.2, random_state=1)
+    return tr_set, te_set, va_set
+
+
+def write_file(data, file_name):
+    # print('starting json writing')
+    file_path = os.path.join('../data/', file_name)
+    # print(file_path)
+    # with open('../data/data.json', 'w', encoding='utf-8') as write_json:
+    with open(file_path, 'a+', encoding='utf-8') as write_json:
+        # for line in data:
+        #     print('json writing')
+        #     print(line)
+        #     json.dump(line, write_json, ensure_ascii=False)
+        try:
+            #json.dump(data, write_json, ensure_ascii=False)
+                      # , indent="\t")
+            write_json.write('\n'.join([json.dumps(d) for d in data]))
+            # json.dump(data, write_json, ensure_ascii=False, default=obj_dict)
+            #json.dump('\n'.join([d for d in data]), write_json,
+                      # ensure_ascii=False, default=obj_dict)
+        except:
+            print('Err occured')
+        finally:
+            # print('finished json writing')
+            # write_json.close()
+            pass
+
+
 for file_num, file in enumerate(file_list):
     with open(os.path.join('../data/Raw_data', file), encoding='utf-8') as data_file:
+        data = []
+        content = []
         for line in data_file:
             # print(line)
             try:
@@ -104,35 +141,44 @@ for file_num, file in enumerate(file_list):
                 # cpc -> labels_index(list type),
                 # p -> features_content(splitted with blank list type, cpc_cnt -> labels_num(integer)
                 # print(d["id_kipi"])
-                test_id = str(patnum_to_idx(patnum_idx, d["id_kipi"]))
+                # test_id = str(patnum_to_idx(patnum_idx, d["id_kipi"]))
+                test_id = patnum_to_idx(patnum_idx, d["id_kipi"])
                 labels_index = d["cpc"]
                 # print(labels_index)
                 labels_index = cpc_to_idx(cpc_idx, idx_cpc, labels_index)
                 features_content = d["p"].split()
                 labels_num = len(labels_index)
-                d = {"test_id": test_id,
+                c = d["title"] + " " + d["p"]
+                d = {"testid": test_id,
                      "features_content": features_content,
                      "labels_index": labels_index,
                      "labels_num": labels_num}
                 # print(d)
                 data.append(d)
+                content.append(c)
             except:
                 pass
+        train_set, test_set, val_set = data_split(data)
+        write_file(train_set, 'Train.json')
+        write_file(val_set, 'Validation.json')
+        write_file(test_set, 'Test.json')
+        write_file(content, 'content.txt')
+
         print('Reading File_{} finished'.format(file_num+1))
 
 print('Reading {} patents success'.format(len(data)))
 
 # print(data[0:3])
 # print(patnum_idx[3])
+# print(content[0:3])
+# print(len(content))
 
-# print('starting json writing')
-with open('../data/data.json', 'w', encoding='utf-8') as write_json:
-    # for line in data:
-    #     print('json writing')
-    #     print(line)
-    #     json.dump(line, write_json, ensure_ascii=False)
-    json.dump(data, write_json, ensure_ascii=False)
-    print('finished json writing')
 
+def obj_dict(obj):
+    return obj.__dict__
 
 # 일단 데이터 저장은 완료. 이제 샘플 데이터로 모델 학습 테스트를 해보자!!!
+write_file(train_set, 'Train.json')
+write_file(val_set, 'Validation.json')
+write_file(test_set, 'Test.json')
+write_file(content, 'content.txt')
