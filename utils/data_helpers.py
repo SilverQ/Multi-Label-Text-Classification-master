@@ -296,6 +296,8 @@ def data_word2vec(input_file, num_labels, word2vec_model):
             onehot_labels_list.append(_create_onehot_labels(labels_index))
             labels_num_list.append(labels_num)
             total_line += 1
+            if total_line % 100 == 0:
+                print('{0} lines loaded'.format(total_line))
 
     class _Data:
         def __init__(self):
@@ -419,14 +421,23 @@ def load_data_and_labels(data_file, num_labels, embedding_size, data_aug_flag):
 
     # Load word2vec model file
     if not os.path.isfile(word2vec_file):
+        print('Creating Word2Vec model')
         create_word2vec_model(embedding_size, TEXT_DIR)
+        print('Creating Word2Vec model completed')
 
+    print('Loading Word2Vec model')
     model = word2vec.Word2Vec.load(word2vec_file)
+    print('Loading Word2Vec model completed')
 
     # Load data from files and split by words
+    print('Loading the data and splitting into words')
     data = data_word2vec(input_file=data_file, num_labels=num_labels, word2vec_model=model)
+    print('Loading the data and splitting into words completed')
+
     if data_aug_flag:
+        print('Data augmentation started')
         data = data_augmented(data)
+        print('Data augmentation completed')
 
     # plot_seq_len(data_file, data)
 

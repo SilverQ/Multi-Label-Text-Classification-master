@@ -4,6 +4,7 @@ __author__ = 'SilverQ'
 import json
 import os
 from sklearn.model_selection import train_test_split
+import pickle
 
 
 """
@@ -78,19 +79,19 @@ def cpc_to_idx(cpc_idx, idx_cpc, cpcs):
     for cpc in cpcs.split("|"):
         # cpc_section = cpc[0], cpc_class = cpc[0:3], cpc_subclass = cpc[0:4], cpc_group = cpc.split("/")[0]
         # cpc_subgroup = cpc
-        cpc_labels = [cpc[0], cpc[0:3], cpc[0:4], cpc.split("/")[0]]
+        cpc_labels = [cpc[0], cpc[0:3], cpc[0:4], cpc.split("/")[0], cpc]
         # print(cpc_labels)
         for label in cpc_labels:
-            if label not in cpc_idx:
+            if label not in idx_cpc.keys():
                 cpc_cnt = len(cpc_idx)
                 cpc_idx[cpc_cnt] = label
                 idx_cpc[label] = cpc_cnt
                 # print('added label: ', label)
-        if cpc not in cpc_idx:
-            cpc_cnt = len(cpc_idx)
-            cpc_idx[cpc_cnt] = cpc
-            idx_cpc[cpc] = cpc_cnt
-            # print('added label: ', label)
+        # if cpc not in cpc_idx:
+        #     cpc_cnt = len(cpc_idx)
+        #     cpc_idx[cpc_cnt] = cpc
+        #     idx_cpc[cpc] = cpc_cnt
+        #     # print('added label: ', label)
         result.append(idx_cpc[cpc])
     # print('result: ')
     # print(result)
@@ -106,25 +107,15 @@ def data_split(input_data):
 def write_file(data, file_name):
     # print('starting json writing')
     file_path = os.path.join('../data/', file_name)
-    # print(file_path)
-    # with open('../data/data.json', 'w', encoding='utf-8') as write_json:
     with open(file_path, 'a+', encoding='utf-8') as write_json:
-        # for line in data:
-        #     print('json writing')
-        #     print(line)
-        #     json.dump(line, write_json, ensure_ascii=False)
         try:
-            #json.dump(data, write_json, ensure_ascii=False)
-                      # , indent="\t")
+            #json.dump(data, write_json, ensure_ascii=False, indent="\t")
             write_json.write('\n'.join([json.dumps(d) for d in data]))
             # json.dump(data, write_json, ensure_ascii=False, default=obj_dict)
-            #json.dump('\n'.join([d for d in data]), write_json,
-                      # ensure_ascii=False, default=obj_dict)
+            #json.dump('\n'.join([d for d in data]), write_json, ensure_ascii=False, default=obj_dict)
         except:
             print('Err occured')
         finally:
-            # print('finished json writing')
-            # write_json.close()
             pass
 
 
@@ -156,6 +147,7 @@ for file_num, file in enumerate(file_list):
                 # print(d)
                 data.append(d)
                 content.append(c)
+
             except:
                 pass
         train_set, test_set, val_set = data_split(data)
@@ -166,19 +158,36 @@ for file_num, file in enumerate(file_list):
 
         print('Reading File_{} finished'.format(file_num+1))
 
-print('Reading {} patents success'.format(len(data)))
-
-# print(data[0:3])
-# print(patnum_idx[3])
-# print(content[0:3])
-# print(len(content))
-
 
 def obj_dict(obj):
     return obj.__dict__
 
-# 일단 데이터 저장은 완료. 이제 샘플 데이터로 모델 학습 테스트를 해보자!!!
-write_file(train_set, 'Train.json')
-write_file(val_set, 'Validation.json')
-write_file(test_set, 'Test.json')
-write_file(content, 'content.txt')
+
+def write_file2(input_data, file_name):
+    file_path = os.path.join('../data/', file_name)
+    with open(file_path, 'wb') as write_file1:
+        pickle.dump(input_data, write_file1)
+        print('Writing File {} finished'.format(file_name))
+
+
+# print(patnum_idx)     # US001899016A_19330228
+# print(cpc_idx)        # C25
+# print(idx_cpc)        # 833820
+
+print(len(patnum_idx))  # 9362172
+print(len(cpc_idx))     # 174833
+print(len(idx_cpc))     # 174833
+
+write_file2(cpc_idx, 'cpc_idx.json')
+write_file2(patnum_idx, 'patnum_idx.json')
+
+# print('Reading {} patents success'.format(len(data)))
+# Reading File_95 finished
+
+# 9362172
+# 174833
+# 174833
+# Writing File cpc_idx.json finished
+# Writing File patnum_idx.json finished
+#
+# Process finished with exit code 0
