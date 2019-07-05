@@ -97,7 +97,11 @@ def train_cnn():
     logger.info("✔︎ Training data processing...")
     train_data = dh.load_data_and_labels(FLAGS.training_data_file, FLAGS.num_classes,
                                          FLAGS.embedding_dim, data_aug_flag=False)
-    # FileNotFoundError: [Errno 2] No such file or directory: '../data/content.txt'
+    # 여기서 파일 용량이 너무 커서 처리 불가.
+    # 잘라서 요청하고 배치를 돌려야 하나?
+    # 잘라서 중간중간 저장하도록 하고 다시 읽어서 배치를 돌려야 하나?
+    # data_helper를 수정하는 것이 가장 깔끔한가?, train_data에 어차피 대량의 데이터가 들어오면 배치로는 어떻게 자르지?
+    # dh.batch_iter에서 배치 데이터로 분할하고 있음.
 
     FLAGS.training_data_file = TRAININGSET_DIR = '../data/Train.json'
 
