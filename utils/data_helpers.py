@@ -330,6 +330,82 @@ def data_word2vec(input_file, num_labels, word2vec_model):
     return _Data()
 
 
+def data_word2vec_v2(input_file, num_labels, word2vec_model):
+    vocab = dict([(k, v.index) for (k, v) in word2vec_model.wv.vocab.items()])
+
+    def _token_to_index(content):
+        result = []
+        for item in content:
+            word2id = vocab.get(item)
+            if word2id is None:
+                word2id = 0
+            result.append(word2id)
+        return result
+
+    def _create_onehot_labels(labels_index):
+        label = [0] * num_labels
+        for item in labels_index:
+            label[int(item)] = 1
+        return label
+
+    if not input_file.endswith('.json'):
+        raise IOError("✘ The research data is not a json file. "
+                      "Please preprocess the research data into the json file.")
+    with open(input_file) as fin:
+        testid_list = []
+        content_index_list = []
+        labels_list = []
+        onehot_labels_list = []
+        labels_num_list = []
+        total_line = 0
+
+        for eachline in fin:
+            data = json.loads(eachline)
+            testid = data['testid']
+            features_content = data['features_content']
+            labels_index = data['labels_index']
+            labels_num = data['labels_num']
+
+            testid_list.append(testid)
+            content_index_list.append(_token_to_index(features_content))
+            labels_list.append(labels_index)
+            onehot_labels_list.append(_create_onehot_labels(labels_index))
+            labels_num_list.append(labels_num)
+            total_line += 1
+            if total_line % 100 == 0:
+                print('{0} lines loaded'.format(total_line))
+
+    class _Data:
+        def __init__(self):
+            pass
+
+        @property
+        def number(self):
+            return total_line
+
+        @property
+        def testid(self):
+            return testid_list
+
+        @property
+        def tokenindex(self):
+            return content_index_list
+
+        @property
+        def labels(self):
+            return labels_list
+
+        @property
+        def onehot_labels(self):
+            return onehot_labels_list
+
+        @property
+        def labels_num(self):
+            return labels_num_list
+
+    return _Data()
+
+
 def data_augmented(data, drop_rate=1.0):
     """
     Data augmented.
@@ -441,6 +517,83 @@ def load_data_and_labels(data_file, num_labels, embedding_size, data_aug_flag):
 
     # plot_seq_len(data_file, data)
 
+    return data
+
+
+def load_data_and_labels_v2(data_file, num_labels, embedding_size, data_aug_flag):
+    word2vec_file = '../data/word2vec_' + str(embedding_size) + '.model'
+
+    if not os.path.isfile(word2vec_file):
+        print('Creating Word2Vec model')
+        create_word2vec_model(embedding_size, TEXT_DIR)
+        print('Creating Word2Vec model completed')
+
+    print('Loading Word2Vec model')
+    model = word2vec.Word2Vec.load(word2vec_file)
+    print('Loading Word2Vec model completed')
+
+    # Load data from files and split by words
+    print('Loading the data and splitting into words')
+    data = data_word2vec(input_file=data_file, num_labels=num_labels, word2vec_model=model)
+    print('Loading the data and splitting into words completed')
+    #
+    # if data_aug_flag:
+    #     print('Data augmentation started')
+    #     data = data_augmented(data)
+    #     print('Data augmentation completed')
+
+    # plot_seq_len(data_file, data)
+    #
+    # with open(os.path.join('../data/Raw_data', file), encoding='utf-8') as data_file:
+    #     data = []
+    #     content = []
+    #     for line in data_file:
+    #         # print(line)
+    #         try:
+    #             d = json.loads(line)    # 이 과정을 생략하면 str타입으로 읽어서 append함
+    #             # print(d)
+    #             # id_kipi -> testid(=pat_cnt) : Done
+    #             # cpc -> labels_index(list type),
+    #             # p -> features_content(splitted with blank list type, cpc_cnt -> labels_num(integer)
+    #             # print(d["id_kipi"])
+    #             # test_id = str(patnum_to_idx(patnum_idx, d["id_kipi"]))
+    #             test_id = patnum_to_idx(patnum_idx, d["id_kipi"])
+    #             labels_index = d["cpc"]
+    #             # print(labels_index)
+    #             labels_index = cpc_to_idx(cpc_idx, idx_cpc, labels_index)
+    #             features_content = d["p"].split()
+    #             labels_num = len(labels_index)
+    #             c = d["title"] + " " + d["p"]
+    #             d = {"testid": test_id,
+    #                  "features_content": features_content,
+    #                  "labels_index": labels_index,
+    #                  "labels_num": labels_num}
+    #             # print(d)
+    #             data.append(d)
+    #             content.append(c)
+    #
+    #         except:
+    #             pass
+    #     train_set, test_set, val_set = data_split(data)
+    #     write_file(train_set, 'Train.json')
+    #     write_file(val_set, 'Validation.json')
+    #     write_file(test_set, 'Test.json')
+    #     write_file(content, 'content.txt')
+    #
+    #     print('Reading File_{} finished'.format(file_num+1))
+    #
+    #
+    # file_path = os.path.join('../data/', file_name)
+    # with open(file_path, 'a+', encoding='utf-8') as write_json:
+    #     try:
+    #         #json.dump(data, write_json, ensure_ascii=False, indent="\t")
+    #         write_json.write('\n'.join([json.dumps(d) for d in data]))
+    #         # json.dump(data, write_json, ensure_ascii=False, default=obj_dict)
+    #         #json.dump('\n'.join([d for d in data]), write_json, ensure_ascii=False, default=obj_dict)
+    #     except:
+    #         print('Err occured')
+    #     finally:
+    #         pass
     return data
 
 
