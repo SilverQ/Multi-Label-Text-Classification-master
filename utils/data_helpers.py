@@ -181,7 +181,7 @@ def create_metadata_file(embedding_size, output_file=METADATA_DIR):
     word2vec_file = '../data/word2vec_' + str(embedding_size) + '.model'
 
     if not os.path.isfile(word2vec_file):
-        raise IOError("✘ The word2vec file doesn't exist."
+        raise IOError("The word2vec file doesn't exist."
                       "Please use function <create_vocab_size(embedding_size)> to create it!")
 
     model = gensim.models.Word2Vec.load(word2vec_file)
@@ -191,7 +191,7 @@ def create_metadata_file(embedding_size, output_file=METADATA_DIR):
     with open(output_file, 'w+') as fout:
         for word in word2idx_sorted:
             if word[0] is None:
-                print("Empty Line, should replaced by any thing else, or will cause a bug of tensorboard")
+                print("Empty Line, should replaced by anything else, or will cause a bug of tensorboard")
                 fout.write('<Empty Line>' + '\n')
             else:
                 fout.write(word[0] + '\n')
