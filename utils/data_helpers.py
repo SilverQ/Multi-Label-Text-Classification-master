@@ -372,8 +372,14 @@ def data_word2vec_v2(input_file, num_labels, word2vec_model):
             onehot_labels_list.append(_create_onehot_labels(labels_index))
             labels_num_list.append(labels_num)
             total_line += 1
-            if total_line % 100 == 0:
+            if total_line % 1000 == 0:
                 print('{0} lines loaded'.format(total_line))
+                # file_path = os.path.join('../data/', input_file+'w2v')
+                # with open(file_path, 'wb') as write_file1:
+                #     pickle.dump(content_index_list, write_file1)
+                # with open(file_path, 'wb') as write_file2:
+                #     pickle.dump(onehot_labels_list, write_file2)
+                # print('Writing File {} line finished'.format(total_line))
 
     class _Data:
         def __init__(self):
@@ -534,9 +540,9 @@ def load_data_and_labels_v2(data_file, num_labels, embedding_size, data_aug_flag
 
     # Load data from files and split by words
     print('Loading the data and splitting into words')
-    data = data_word2vec(input_file=data_file, num_labels=num_labels, word2vec_model=model)
+    data = data_word2vec_v2(input_file=data_file, num_labels=num_labels, word2vec_model=model)
     print('Loading the data and splitting into words completed')
-    #
+
     # if data_aug_flag:
     #     print('Data augmentation started')
     #     data = data_augmented(data)
