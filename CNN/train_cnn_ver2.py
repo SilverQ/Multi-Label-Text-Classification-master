@@ -1,19 +1,21 @@
 # -*- coding:utf-8 -*-
 import sys
+import tensorflow as tf
+import os
 import time
 import numpy as np
-import tensorflow as tf
 import json
 from tensorflow.keras import preprocessing
 from tensorboard.plugins import projector
 
-# import os
 # import keras
 # import logging
 # from text_cnn import TextCNN
 # from utils import checkmate as cm
 # from utils import data_helpers as dh
 # from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score, average_precision_score
+
+# tf.enable_eager_execution()
 
 # Parameters
 # ==================================================
@@ -29,9 +31,9 @@ from tensorboard.plugins import projector
 
 # logger = dh.logger_fn("tflog", "logs/training-{0}.log".format(time.asctime()))
 
-TRAININGSET_DIR = '../data/Train.json'
-VALIDATIONSET_DIR = '../data/Validation.json'
-METADATA_DIR = '../data/metadata.tsv'
+tr_data = '../data/Train.json'
+val_data = '../data/Validation.json'
+meta_data = '../data/metadata.tsv'
 
 """
 tf.app.flags
@@ -363,28 +365,43 @@ def logging_part():
 
 
 def train_tf_data():
-    # tokenizer = preprocessing.text.Tokenizer()
-    # tokenizer.fit_on_texts('../data/Train.json')  # 토크나이저 학습은 전체 데이터를 대상으로!!
-    #
-    # sequences = tokenizer.texts_to_sequences('../data/Train.json')
-    # sequences = preprocessing.sequence.pad_sequences(sequences, maxlen=6, padding='post')
+    raw_path = '../data/Raw_data'
 
-    data = json.loads(TRAININGSET_DIR)
-    print(data)
+    file_list = os.listdir(raw_path)
+    file_list = [os.path.join(raw_path, file) for file in file_list if file.endswith(".txt")]
 
-    # dataset = tf.data.Dataset.zip((sentences, labels))
-    #
-    # targets = []
-    # targets = np.array(targets)
-    # word_index = tokenizer.word_index
-    #
-    # iterator = dataset.make_one_shot_iterator()
-    # next_element = iterator.get_next()
-    #
-    # # Actually run in a session
-    # with tf.Session() as sess:
-    #     print(sess.run(dataset))
-    # pass
+    def parse_fn(x):
+        # x is `batch_size` of lines, each of which is a json object
+        samples = [json.loads(l) for l in x]
+        text = [s['p'] for s in samples]  # List[List[str]]
+        labels = [s['cpc'] for s in samples]  # List[str]
+        # features = bc.encode(text)
+        return text, labels
+
+    BATCH_SIZE = 10
+    EPOCH_SIZE = 2
+
+    # dataset = tf.data.TextLineDataset(file_list).map(parse_fn)
+    dataset = tf.data.TextLineDataset(file_list)
+    dataset = dataset.shuffle(buffer_size=10000).repeat(EPOCH_SIZE).batch(BATCH_SIZE)
+    iterator = dataset.make_one_shot_iterator()
+    next_data = iterator.get_next()
+    # idkipi, pd, cpc, title, p = iterator.get_next()
+
+    # dataset = dataset.shuffle(buffer_size=10000)       # 셔플을 먼저 해주고 배치를 자르자.
+    # dataset = dataset.batch(BATCH_SIZE)
+    # dataset = dataset.repeat(EPOCH_SIZE)
+
+    with tf.Session() as sess:
+        tmp = sess.run(next_data)
+        print(tmp)
+        # print('data: ', tmp('id_kipi'), len(tmp))
+        # while True:
+        #     try:
+        #         # seq, lab = next_data
+        #         print('data: ', sess.run(next_data))
+        #     except:
+        #         break  # 갯수가 끝나면 에러뜨면서 종료
 
 
 if __name__ == '__main__':
