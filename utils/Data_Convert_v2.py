@@ -3,9 +3,9 @@ __author__ = 'SilverQ'
 
 import json
 import os
-from sklearn.model_selection import train_test_split
-import pickle
 
+
+# tf.data를 사용할 수 있도록, Section_Title.txt와 Section_Label.txt 파일을 만들어보자.
 
 """
 Original Data
@@ -49,27 +49,11 @@ file_list = os.listdir(raw_path)
 file_list = [file for file in file_list if file.endswith(".txt")]
 
 
-def cpc_to_idx(cpcs):
-    # result = []
-    # for cpc in cpcs.split("|"):
-    #     cpc_labels = [cpc[0], cpc[0:3], cpc[0:4], cpc.split("/")[0], cpc]
-    #     result.append(cpc_labels)
-    result = set([cpc[0] for cpc in cpcs.split('|')])
-    return result
-
-
-def data_split(input_data):
-    tr_set, te_set = train_test_split(input_data, test_size=0.2, random_state=1)
-    tr_set, va_set = train_test_split(tr_set, test_size=0.2, random_state=1)
-    return tr_set, te_set, va_set
-
-
 def write_file(data, file_name):
     file_path = os.path.join('../data/', file_name)
     with open(file_path, 'a+', encoding='utf-8') as write_json:
         try:
-            # write_json.write('\n'.join([json.dumps(d) for d in data]))
-            write_json.write('{}\n'.format(json.dumps(data)))
+            write_json.write('{}\n'.format('\n'.join([json.dumps(d) for d in data])))
         except:
             pass
 
@@ -88,10 +72,3 @@ for file_num, file in enumerate(file_list):
         write_file(title, 'Section_Title.txt')
         write_file(cpc, 'Section_Label.txt')
         print('Reading File_{} finished'.format(file_num+1))
-
-
-def write_file2(data, file_name):
-    file_path = os.path.join('../data/', file_name)
-    with open(file_path, 'wb') as file:
-        pickle.dump(data, file)
-        print('Writing File {} finished'.format(file_name))
