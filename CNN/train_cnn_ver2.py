@@ -32,28 +32,53 @@ def write_file(input_data, file_path):
         print('Writing File {} finished'.format(file_path))
 
 
+def tokenize(samples):
+    # Check One Hot
+    if os.path.isfile(one_hot_file):
+        print('Loading Saved Tokenizer')
+        with open(one_hot_file, 'rb') as handle:
+            tokenizer = pickle.load(handle)
+    else:
+        # print(len(targets))     # 9362172
+        # print(len(samples))     # 9362172
+        tokenizer = preprocessing.text.Tokenizer()
+        # tokenizer = preprocessing.text.Tokenizer(num_words=None, filters='!"#$%&()*+,-./:;<=>?@[\\]^_`{|}~\t\n',
+        #                                          lower=True, split=' ', char_level=False,
+        #                                          oov_token=None, document_count=0)
+
+        tokenizer.fit_on_texts(samples)  # 토크나이저 학습은 전체 데이터를 대상으로!!
+        # 그러면 실 서비스 환경에서는 신조어들이 막 튀어나올텐데, 그때는 에러나나?
+        # 참고 : https://subinium.github.io/Keras-6-1/
+        with open(one_hot_file, 'wb') as handle:
+            pickle.dump(tokenizer, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    return tokenizer
+
+
 def train_section_title():
 
-    # Check One Hot
     with open(os.path.join('../data', 'Section_Title.txt'), encoding='utf-8') as data_file:
         samples = [json.loads(line) for line in data_file]
-        if os.path.isfile(one_hot_file):
-            print('Loading Saved Tokenizer')
-            with open(one_hot_file, 'rb') as handle:
-                tokenizer = pickle.load(handle)
-        else:
-            # print(len(targets))     # 9362172
-            # print(len(samples))     # 9362172
-            tokenizer = preprocessing.text.Tokenizer()
-            # tokenizer = preprocessing.text.Tokenizer(num_words=None, filters='!"#$%&()*+,-./:;<=>?@[\\]^_`{|}~\t\n',
-            #                                          lower=True, split=' ', char_level=False,
-            #                                          oov_token=None, document_count=0)
 
-            tokenizer.fit_on_texts(samples)  # 토크나이저 학습은 전체 데이터를 대상으로!!
-            # 그러면 실 서비스 환경에서는 신조어들이 막 튀어나올텐데, 그때는 에러나나?
-            # 참고 : https://subinium.github.io/Keras-6-1/
-            with open(one_hot_file, 'wb') as handle:
-                pickle.dump(tokenizer, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    # # Check One Hot
+    # if os.path.isfile(one_hot_file):
+    #     print('Loading Saved Tokenizer')
+    #     with open(one_hot_file, 'rb') as handle:
+    #         tokenizer = pickle.load(handle)
+    # else:
+    #     # print(len(targets))     # 9362172
+    #     # print(len(samples))     # 9362172
+    #     tokenizer = preprocessing.text.Tokenizer()
+    #     # tokenizer = preprocessing.text.Tokenizer(num_words=None, filters='!"#$%&()*+,-./:;<=>?@[\\]^_`{|}~\t\n',
+    #     #                                          lower=True, split=' ', char_level=False,
+    #     #                                          oov_token=None, document_count=0)
+    #
+    #     tokenizer.fit_on_texts(samples)  # 토크나이저 학습은 전체 데이터를 대상으로!!
+    #     # 그러면 실 서비스 환경에서는 신조어들이 막 튀어나올텐데, 그때는 에러나나?
+    #     # 참고 : https://subinium.github.io/Keras-6-1/
+    #     with open(one_hot_file, 'wb') as handle:
+    #         pickle.dump(tokenizer, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    tokenizer = tokenize(samples)
 
     word_index = tokenizer.word_index       # 계산된 단어 인덱스
     # print('Found %s unique tokens.' % len(word_index))    # Found 252430 unique tokens.
@@ -73,23 +98,38 @@ def train_section_title():
 
     # [기본 코드]
     dataset = tf.data.Dataset.from_tensor_slices((sequences, targets))  # 튜플로 감싸서 넣으면 tf.data가 알아서 잘라서 쓴다
-    # dataset = dataset.shuffle(buffer_size=10000).repeat(EPOCH_SIZE).batch(BATCH_SIZE)
+    # dataset = tf.data.Dataset.from_tensor_slices(targets)  # sequence를 tokenize하는게 너무 무거운듯.
+    dataset = dataset.shuffle(buffer_size=1000).repeat(EPOCH_SIZE).batch(BATCH_SIZE)
+    # buffer_size: A tf.int64 scalar tf.Tensor,
+    # representing the maximum number elements that will be buffered when prefetching.
+    # 1000으로 낮춰서 실행은 성공함
     iterator = dataset.make_one_shot_iterator()  # 없어도 됨,
     # If using `tf.estimator`, return the `Dataset` object directly from your input function
     next_data = iterator.get_next()
 
-    def view_sample_datas():
-        # tf.keras.clear_session()
-        tf.keras.backend.clear_session()
+    def view_sample_data():
         with tf.Session() as sess:
             seq, lab = next_data
             print(sess.run([seq, lab]))
+            # lab = next_data
+            # print(sess.run([lab]))
             """
             [array([   90,    15,  6913,    62, 10744,   282,     1,    15,  7230,
                     1832,   267,     1,    19,   373,    13], dtype=int32), array([b'C'], dtype=object)]
+            after
+            [array([[b'B'],
+                    [b'C'],
+                    [b'F'],
+                    [b'A'],
+                    [b'C'],
+                    [b'C'],
+                    [b'B'],
+                    [b'B'],
+                    [b'B'],
+                    [b'H']], dtype=object)] 
             """
 
-    view_sample_datas()
+    view_sample_data()
 
     # with tf.Session() as sess:
     #     while True:
@@ -101,6 +141,4 @@ def train_section_title():
 
 
 if __name__ == '__main__':
-    # train_cnn()
-    # logging_part()
     train_section_title()
