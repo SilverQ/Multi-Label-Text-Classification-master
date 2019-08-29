@@ -55,36 +55,32 @@ def tokenize(samples):
 
 
 def train_section_title():
+    def read_txt(file):
+        with open(file, encoding='utf-8') as data_file:
+            for l in data_file:
+                yield json.loads(l)
+
+    def read_sequence(sequence):
+        for i in sequence:
+            yield i
 
     with open(os.path.join('../data', 'Section_Title.txt'), encoding='utf-8') as data_file:
         samples = [json.loads(line) for line in data_file]
 
-    # # Check One Hot
-    # if os.path.isfile(one_hot_file):
-    #     print('Loading Saved Tokenizer')
-    #     with open(one_hot_file, 'rb') as handle:
-    #         tokenizer = pickle.load(handle)
-    # else:
-    #     # print(len(targets))     # 9362172
-    #     # print(len(samples))     # 9362172
-    #     tokenizer = preprocessing.text.Tokenizer()
-    #     # tokenizer = preprocessing.text.Tokenizer(num_words=None, filters='!"#$%&()*+,-./:;<=>?@[\\]^_`{|}~\t\n',
-    #     #                                          lower=True, split=' ', char_level=False,
-    #     #                                          oov_token=None, document_count=0)
-    #
-    #     tokenizer.fit_on_texts(samples)  # 토크나이저 학습은 전체 데이터를 대상으로!!
-    #     # 그러면 실 서비스 환경에서는 신조어들이 막 튀어나올텐데, 그때는 에러나나?
-    #     # 참고 : https://subinium.github.io/Keras-6-1/
-    #     with open(one_hot_file, 'wb') as handle:
-    #         pickle.dump(tokenizer, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    def gen_fn(samples):
+        with open(os.path.join('../data', 'Section_Title.txt'), encoding='utf-8') as data_file:
+            for line in data_file:
+                yield json.loads(line)
 
     tokenizer = tokenize(samples)
 
     word_index = tokenizer.word_index       # 계산된 단어 인덱스
     # print('Found %s unique tokens.' % len(word_index))    # Found 252430 unique tokens.
 
-    sequences = tokenizer.texts_to_sequences(samples)
+    sequences = tokenizer.texts_to_sequences(gen_fn(samples))
     sequences = preprocessing.sequence.pad_sequences(sequences, maxlen=15, padding='post')
+
+    # print(sequences[:3])
 
     with open(os.path.join('../data', 'Section_Label.txt'), encoding='utf-8') as data_file:
         targets = [[json.loads(line)] for line in data_file]
@@ -99,7 +95,7 @@ def train_section_title():
     # [기본 코드]
     dataset = tf.data.Dataset.from_tensor_slices((sequences, targets))  # 튜플로 감싸서 넣으면 tf.data가 알아서 잘라서 쓴다
     # dataset = tf.data.Dataset.from_tensor_slices(targets)  # sequence를 tokenize하는게 너무 무거운듯.
-    dataset = dataset.shuffle(buffer_size=1000).repeat(EPOCH_SIZE).batch(BATCH_SIZE)
+    dataset = dataset.shuffle(buffer_size=100).repeat(EPOCH_SIZE).batch(BATCH_SIZE)
     # buffer_size: A tf.int64 scalar tf.Tensor,
     # representing the maximum number elements that will be buffered when prefetching.
     # 1000으로 낮춰서 실행은 성공함
@@ -126,7 +122,7 @@ def train_section_title():
                     [b'B'],
                     [b'B'],
                     [b'B'],
-                    [b'H']], dtype=object)] 
+                    [b'H']], dtype=object)]
             """
 
     view_sample_data()
