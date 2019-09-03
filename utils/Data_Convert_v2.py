@@ -3,7 +3,7 @@ __author__ = 'SilverQ'
 
 import json
 import os
-
+import pandas as pd
 
 # tf.data를 사용할 수 있도록, Section_Title.txt와 Section_Label.txt 파일을 만들어보자.
 
@@ -28,19 +28,21 @@ Original Data
       fabrics."}
 
 I will convert the original data to below data
-<Training Data with Title of invention>
-["Body assembled from at least two component bodies",
- "Bi-directional dot matrix printer with slant control",
- "Vertical lift assembly",
- "Layer-forming apparatus especially for particle board mats",
- "Fungicidal 5-dialkylamino-4-nitrosulfonamidothiophenes",
- "Multi-level knock-down framework structure for supporting a plurality of objects",
- "Apparatus for piling up plate-shaped articles",
- "Self-locking screw nut",
- "Process for the oxidation of waste liquors arising from the manufacture of paper pulp",
- "Pressure control arrangement for hydraulic brake systems"]
-<Label Data>
-["E", "B", "B", "B", "C", "E", "C", "F", "D", "B"]
+[label, sentence]
+B Flow rack
+B Paper roll storage and handling installation and method for storing and handling paper rolls
+B Carrier wheel assembly for sweep auger
+B Unitary liftgate
+E Hydraulically actuated casing slip lifter with hinged wrap arm assembly
+F Horizontal wind generator
+B Rotor blade system with reduced blade-vortex interaction noise
+F Vane and/or blade for noise control
+F Cool air circulation blower for refrigerator
+F Formed disk plate heat exchanger
+F Spiral-based axial flow devices
+F Water torque converter
+F Heat dissipation device and its impeller thereof
+F Turbochargers
 """
 
 raw_path = '../data/Raw_data'
@@ -53,22 +55,36 @@ def write_file(data, file_name):
     file_path = os.path.join('../data/', file_name)
     with open(file_path, 'a+', encoding='utf-8') as write_json:
         try:
-            write_json.write('{}\n'.format('\n'.join([json.dumps(d) for d in data])))
+            write_json.write('{}\n'.format('\n'.join(json.dumps(d) for d in data)))
+            # write_json.write('{}\n'.format('\n'.join(json.dumps(d) for d in data)))
+            # write_json.write(data)
+            # write_json.write('{}\n')
+            # write_json.write(json.dumps(d) for d in data
+            # json.dump(data, write_json, ensure_ascii=False)
         except:
             pass
 
 
 for file_num, file in enumerate(file_list):
-    with open(os.path.join('../data/Raw_data', file), encoding='utf-8') as data_file:
-        title = []
-        cpc = []
-        for line in data_file:
-            try:
-                d = json.loads(line)    # 이 과정을 생략하면 str타입으로 읽어서 append함
-                cpc.append(d["cpc"][0])
-                title.append(d["title"])
-            except:
-                pass
-        write_file(title, 'Section_Title.txt')
-        write_file(cpc, 'Section_Label.txt')
-        print('Reading File_{} finished'.format(file_num+1))
+    with open(os.path.join('../data/', 'title_Section.txt'), 'a', encoding='utf-8') as f:
+        with open(os.path.join('../data/Raw_data', file), encoding='utf-8') as data_file:
+            # title = []
+            # cpc = []
+            title_Section = []
+            for line in data_file:
+                try:
+                    d = json.loads(line)    # 이 과정을 생략하면 str타입으로 읽어서 append함
+                    # print(d["cpc"][0], d["title"])
+                    # cpc.append(d["cpc"][0])
+                    # title.append(d["title"])
+                    title_Section.append([d["cpc"][0], d["title"]])
+                except:
+                    pass
+            # print(title_Section[:3])
+            # df = pd.DataFrame(data=title_Section)
+            # df.to_csv(os.path.join('../data/', 'title_Section.txt'), sep='\t', header=False, index=False)
+            # df.to_csv(f, sep='\t', header=False, index=False, encoding='utf-8')
+            # write_file(title, 'Section_Title.txt')
+            # write_file(cpc, 'Section_Label.txt')
+            write_file(title_Section, 'title_Section.txt')
+            print('Reading File_{}_{} finished'.format(file_num+1, file))
