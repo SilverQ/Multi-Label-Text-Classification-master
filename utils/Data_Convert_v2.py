@@ -3,7 +3,10 @@ __author__ = 'SilverQ'
 
 import json
 import os
+import numpy as np
 import pandas as pd
+import pickle
+
 
 # tf.data를 사용할 수 있도록, Section_Title.txt와 Section_Label.txt 파일을 만들어보자.
 
@@ -65,26 +68,71 @@ def write_file(data, file_name):
             pass
 
 
-for file_num, file in enumerate(file_list):
-    with open(os.path.join('../data/', 'title_Section.txt'), 'a', encoding='utf-8') as f:
-        with open(os.path.join('../data/Raw_data', file), encoding='utf-8') as data_file:
-            # title = []
-            # cpc = []
-            title_Section = []
-            for line in data_file:
-                try:
-                    d = json.loads(line)    # 이 과정을 생략하면 str타입으로 읽어서 append함
-                    # print(d["cpc"][0], d["title"])
-                    # cpc.append(d["cpc"][0])
-                    # title.append(d["title"])
-                    title_Section.append([d["cpc"][0], d["title"]])
-                except:
-                    pass
-            # print(title_Section[:3])
-            # df = pd.DataFrame(data=title_Section)
-            # df.to_csv(os.path.join('../data/', 'title_Section.txt'), sep='\t', header=False, index=False)
-            # df.to_csv(f, sep='\t', header=False, index=False, encoding='utf-8')
-            # write_file(title, 'Section_Title.txt')
-            # write_file(cpc, 'Section_Label.txt')
-            write_file(title_Section, 'title_Section.txt')
-            print('Reading File_{}_{} finished'.format(file_num+1, file))
+def making_source_v2():
+    source_file = open(os.path.join('../data/', 'title_Section_test.txt'), 'a', encoding='utf-8')
+    for file_num, file in enumerate(file_list):
+        title_Section = []
+        raw_data = open(os.path.join('../data/Raw_data', file), encoding='utf-8')
+        for line in raw_data:
+            try:
+                d = json.loads(line)    # 이 과정을 생략하면 str타입으로 읽어서 append함
+                title_Section.append([d["cpc"][0], d["title"]])
+            except:
+                pass
+        source_file.write('{}\n'.format('\n'.join(json.dumps(d) for d in title_Section)))
+        print('Reading File_{}_{} finished'.format(file_num+1, file))
+
+
+# making_source_v2()
+
+
+def making_source_csv():
+    source_file = open(os.path.join('../data/', 'title_Section.csv'), 'a', encoding='utf-8')
+    for file_num, file in enumerate(file_list):
+        title_Section = []
+        raw_data = open(os.path.join('../data/Raw_data', file), encoding='utf-8')
+        for line in raw_data:
+            try:
+                d = json.loads(line)    # 이 과정을 생략하면 str타입으로 읽어서 append함
+                title_Section.append([d["cpc"][0], d["title"]])
+            except:
+                pass
+        df = pd.DataFrame(data=title_Section)
+        df.to_csv(source_file, sep='\t', header=False, index=False)
+        print('Reading File_{}_{} finished'.format(file_num+1, file))
+
+
+making_source_csv()
+
+# read_list = np.load(os.path.join('../data/', 'title_Section_test.npy')).tolist()
+# read_list = np.load(os.path.join('../data/', 'title_Section_test.npy'))
+# print(read_list[:3], type(read_list))
+
+
+def making_source_v1():
+    for file_num, file in enumerate(file_list):
+        with open(os.path.join('../data/', 'title_Section.txt'), 'a', encoding='utf-8') as f:
+            with open(os.path.join('../data/Raw_data', file), encoding='utf-8') as data_file:
+                # title = []
+                # cpc = []
+                title_Section = []
+                for line in data_file:
+                    try:
+                        d = json.loads(line)    # 이 과정을 생략하면 str타입으로 읽어서 append함
+                        # print(d["cpc"][0], d["title"])
+                        # cpc.append(d["cpc"][0])
+                        # title.append(d["title"])
+                        title_Section.append([d["cpc"][0], d["title"]])
+                    except:
+                        pass
+                # print(title_Section[:3])
+                # df = pd.DataFrame(data=title_Section)
+                # df.to_csv(os.path.join('../data/', 'title_Section.txt'), sep='\t', header=False, index=False)
+                # df.to_csv(f, sep='\t', header=False, index=False, encoding='utf-8')
+                # write_file(title, 'Section_Title.txt')
+                # write_file(cpc, 'Section_Label.txt')
+                write_file(title_Section, 'title_Section.txt')
+                print('Reading File_{}_{} finished'.format(file_num+1, file))
+
+
+# making_source_v1()
