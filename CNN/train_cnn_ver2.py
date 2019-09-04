@@ -329,11 +329,13 @@ if __name__ == '__main__':
     # train_section_title()
 
     feature_columns = [tf.feature_column.numeric_column(k) for k in feature_names]
+    print(feature_columns)
+    # [_NumericColumn(key='title', shape=(1,), default_value=None, dtype=tf.float32, normalizer_fn=None)]
 
     classifier = tf.estimator.DNNClassifier(feature_columns=feature_columns,    # The input features to our model
                                             hidden_units=[10, 10],              # Two layers, each with 10 neurons
                                             n_classes=8,
                                             model_dir=os.getcwd())          # Path to where checkpoints etc are stored
-    classifier.train(input_fn=lambda: my_input_fn(source_file, True, 8))
+    classifier.train(input_fn=lambda: my_input_fn(source_file, True, 8))    # 현재 에러
 
     # https://developers-kr.googleblog.com/2017/09/introducing-tensorflow-datasets-and-estimators.html
