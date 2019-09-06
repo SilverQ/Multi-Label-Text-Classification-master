@@ -1,33 +1,46 @@
 # -*- coding:utf-8 -*-
-import sys
 import tensorflow as tf
 import os
 import pickle
-import pandas as pd
-import time
-import numpy as np
 import json
 from tensorflow.keras import preprocessing
-from tensorboard.plugins import projector
-# import ast
 
 # import keras
+# import ast
+# import sys
 # import logging
+# import pandas as pd
+# import time
+# import numpy as np
+# from tensorboard.plugins import projector
 # from text_cnn import TextCNN
+
 # tf.enable_eager_execution()
 
 # cur_path = os.getcwd()
 # print(cur_path)
+
 data_path = '../data/'
 one_hot_file = os.path.join('../data/', 'tokenizer.pickle')
+embedding_size = 100
 BATCH_SIZE = 4
 EPOCH_SIZE = 2
+label_id = {'a': 0, 'b': 1, 'c': 2, 'd': 3, 'e': 4, 'f': 5, 'g': 6, 'h': 7, 'y': 8}
 
 tf.keras.backend.clear_session()
 
 # raw_path = '../data/Raw_data'
-# file_list = ['Section_Label.txt', 'Section_Title.txt']
-source_file = os.path.join('../data', 'title_Section.txt')
+
+
+def load_tokenizer():
+    # Using json.loads
+    source_txt = os.path.join('../data', 'title_Section.txt')
+    data_file = open(source_txt, encoding='utf-8')
+    print(data_file)
+    sentence = [json.loads(line)[1] for line in data_file]
+    print(sentence[0:3])
+    tokenizer = fit_tokenize(sentence)    # 토크나이저 학습
+    return tokenizer
 
 
 def write_file(input_data, file_path):
@@ -105,20 +118,24 @@ source_file = os.path.join('../data/', 'title_Section.csv')
 
 def my_input_fn(file_path, perform_shuffle=False, repeat_count=1):
     def decode_csv(line):
-        parsed_line = tf.decode_csv(line, [[''], ['']], field_delim='\t')
+        parsed_line = tf.decode_csv(line, [[0], ['']], field_delim='\t')
         # label = parsed_line[-1:]    # Last element is the label
         # del parsed_line[-1]         # Delete last element
         # features = parsed_line      # Everything (but last element) are the features
         # d = dict(zip(feature_names, features)), label
         sentence = parsed_line[-1:]
+        print('sentence: ', sentence)
+        sentence = tokenizer.texts_to_sequences(sentence)
+        # sentence = preprocessing.sequence.pad_sequences(sentence, maxlen=6, padding='post')
+
         del parsed_line[-1]
         label = parsed_line
         d = dict(zip(feature_names, sentence)), label
         return d
 
-    dataset = (tf.data.TextLineDataset(file_path) # Read text file
+    dataset = (tf.data.TextLineDataset(file_path).map(decode_csv)) # Read text file
        # .skip(1) # Skip header row
-        .map(decode_csv)) # Transform each elem by applying decode_csv fn
+       # .map(decode_csv)) # Transform each elem by applying decode_csv fn
     if perform_shuffle:
         # Randomizes input using a window of 256 elements (read into memory)
         dataset = dataset.shuffle(buffer_size=256)
@@ -126,6 +143,7 @@ def my_input_fn(file_path, perform_shuffle=False, repeat_count=1):
     dataset = dataset.batch(8)                      # Batch size to use
     iterator = dataset.make_one_shot_iterator()
     batch_features, batch_labels = iterator.get_next()
+    # print('batch_features, batch_labels: ', batch_features, batch_labels)
     return batch_features, batch_labels
 
 
@@ -321,20 +339,23 @@ def train_section_title():
 
 
 if __name__ == '__main__':
+    tokenizer = load_tokenizer()
+
     next_batch = my_input_fn(source_file, True, repeat_count=2)
 
     with tf.Session() as sess:
         first_batch = sess.run(next_batch)
-    print(first_batch)
+        print("title 1'st batch data: ", first_batch[0]['title'][1].decode())
     # train_section_title()
 
     feature_columns = [tf.feature_column.numeric_column(k) for k in feature_names]
-    print(feature_columns)
+    print('feature_columns: ', feature_columns)
     # [_NumericColumn(key='title', shape=(1,), default_value=None, dtype=tf.float32, normalizer_fn=None)]
 
-    classifier = tf.estimator.DNNClassifier(feature_columns=feature_columns,    # The input features to our model
+    word_embedding_column = tf.feature_column.embedding_column(feature_columns, dimension=embedding_size)
+    classifier = tf.estimator.DNNClassifier(feature_columns=[word_embedding_column],   # The input features to our model
                                             hidden_units=[10, 10],              # Two layers, each with 10 neurons
-                                            n_classes=8,
+                                            n_classes=9,
                                             model_dir=os.getcwd())          # Path to where checkpoints etc are stored
     classifier.train(input_fn=lambda: my_input_fn(source_file, True, 8))    # 현재 에러
 

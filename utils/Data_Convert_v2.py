@@ -53,6 +53,12 @@ raw_path = '../data/Raw_data'
 file_list = os.listdir(raw_path)
 file_list = [file for file in file_list if file.endswith(".txt")]
 
+label_id = {'a': 0, 'b': 1, 'c': 2, 'd': 3, 'e': 4, 'f': 5, 'g': 6, 'h': 7, 'y': 8}
+
+# def label_to_id(label):
+#     id = {'a': 0, 'b': 1, 'c': 2, 'd': 3, 'e': 4, 'f': 5, 'g': 6, 'h': 7, 'y': 8}
+#     return id(label)
+
 
 def write_file(data, file_name):
     file_path = os.path.join('../data/', file_name)
@@ -94,7 +100,7 @@ def making_source_csv():
         for line in raw_data:
             try:
                 d = json.loads(line)    # 이 과정을 생략하면 str타입으로 읽어서 append함
-                title_Section.append([d["cpc"][0], d["title"]])
+                title_Section.append([label_id[d["cpc"][0].lower()], d["title"]])
             except:
                 pass
         df = pd.DataFrame(data=title_Section)
