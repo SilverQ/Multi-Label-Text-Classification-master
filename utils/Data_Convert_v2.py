@@ -1,12 +1,8 @@
-# -*- coding:utf-8 -*-
-__author__ = 'SilverQ'
-
 import json
 import os
 import numpy as np
 import pandas as pd
 import pickle
-
 
 # tf.data를 사용할 수 있도록, Section_Title.txt와 Section_Label.txt 파일을 만들어보자.
 
@@ -65,7 +61,6 @@ def write_file(data, file_name):
     with open(file_path, 'a+', encoding='utf-8') as write_json:
         try:
             write_json.write('{}\n'.format('\n'.join(json.dumps(d) for d in data)))
-            # write_json.write('{}\n'.format('\n'.join(json.dumps(d) for d in data)))
             # write_json.write(data)
             # write_json.write('{}\n')
             # write_json.write(json.dumps(d) for d in data
