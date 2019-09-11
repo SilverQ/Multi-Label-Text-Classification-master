@@ -13,19 +13,17 @@ from tensorflow.keras import backend
 tf.compat.v1.enable_eager_execution
 
 data_path = '../data/'
-# source_txt = os.path.join('../data', 'title_Section.txt')
-# one_hot_file = os.path.join('../data/', 'tokenizer.pickle')
-EMB_SIZE = 300
+EMB_SIZE = 100
 RNG_SEED = 100   # 어제 실험한 것과 오늘 실험한게 일관성을 가지려면 초기값 고정 필요
-BATCH_SIZE = 128
+BATCH_SIZE = 64
 NUM_EPOCHS = 2
 label_id = {'a': 0, 'b': 1, 'c': 2, 'd': 3, 'e': 4, 'f': 5, 'g': 6, 'h': 7, 'y': 8}
 id_label = {i: l for l, i in label_id.items()}
 
 tf.keras.backend.clear_session()
 
-max_length = 10
-TEST_SPLIT = 0.5
+max_length = 50
+TEST_SPLIT = 0.7
 
 raw_path = '../data/Raw_data'
 file_list = os.listdir(raw_path)
@@ -36,26 +34,24 @@ test_data_path = '../data/Raw_data/TestData'
 test_file_list = os.listdir(test_data_path)
 test_file_list = [file for file in file_list if file.endswith(".txt")]
 
-source_csv = os.path.join('../data/', 'title_Section.csv')
-feature_names = ['title']
-token_file = os.path.join('../data/', 'tokenizer.pickle')
+# source_csv = os.path.join('../data/', 'title_Section.csv')
+# feature_names = ['title']
 
 print('Loading Saved Tokenizer')
+token_file = os.path.join('../data/', 'abst_tokenizer.pickle')
 with open(token_file, 'rb') as handle:
     tokenizer = pickle.load(handle)
-# print(list(tokenizer.word_index)[:3])     # ['and', 'for', 'of']
 VOCAB_SIZE = len(tokenizer.word_index)
 
 
 def read_data(file):
-    # for file in tqdm(file_list):
     title = []
     label = []
     raw_data = open(os.path.join('../data/Raw_data', file), encoding='utf-8')
     for line in raw_data:
         try:
             d = json.loads(line)    # 이 과정을 생략하면 str타입으로 읽어서 append함
-            title.append(d['title'])
+            title.append(d['title'] + ', ' + d['p'])
             label.append(label_id[d["cpc"][0].lower()])
         except:
             pass
@@ -178,9 +174,8 @@ def model_fn(features, labels, mode, params):
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
 
-# est = tf.estimator.Estimator(model_fn, model_dir="title_to_section/checkpoint")
 est = tf.estimator.Estimator(model_fn, model_dir="abst_to_section/checkpoint")
-# est2 = tf.estimator.Estimator(model_fn, model_dir="abst_to_subclass/checkpoint")
+
 
 for file in tqdm(file_list):
     [label, title_token] = read_data(file)
@@ -188,16 +183,12 @@ for file in tqdm(file_list):
     input_train, input_eval, label_train, label_eval = train_test_split(title_token, label,
                                                                         test_size=TEST_SPLIT,
                                                                         random_state=RNG_SEED)
-
     # print('\n')
     # print('title_token: ', title_token)
     # print('label_train: ', label_train)
 
     est.train(train_input_fn)
     valid = est.evaluate(eval_input_fn)
-
-# for line in dataset.take(2):
-#     print(line, line[0], line[1])
 
 
 # [test_label, test_title_token] = read_data(test_file_list[0])

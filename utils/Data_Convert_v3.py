@@ -51,7 +51,7 @@ raw_path = '../data/Raw_data'
 max_length = 10
 file_list = os.listdir(raw_path)
 file_list = [file for file in file_list if file.endswith(".txt")]
-file_list = [file for file in file_list if file.endswith("docs.txt")]
+# file_list = [file for file in file_list if file.endswith("docs.txt")]
 print('file_list: ', file_list)
 label_id = {'a': 0, 'b': 1, 'c': 2, 'd': 3, 'e': 4, 'f': 5, 'g': 6, 'h': 7, 'y': 8}
 
@@ -86,7 +86,8 @@ label_id = {'a': 0, 'b': 1, 'c': 2, 'd': 3, 'e': 4, 'f': 5, 'g': 6, 'h': 7, 'y':
 
 # making_source_v2()
 
-token_file = os.path.join('../data/', 'tokenizer.pickle')
+# token_file = os.path.join('../data/', 'tokenizer.pickle')     # title to section
+token_file = os.path.join('../data/', 'abst_tokenizer.pickle')       # abstraction to section
 
 
 def load_tokenizer(token_file):
@@ -111,6 +112,7 @@ def fit_tokenizer(file_list):
                     d = json.loads(line)
                     # print(d, '\n', d['title'])
                     title_texts.append(d['title'])
+                    title_texts.append(d['p'])
                 except:
                     pass
         # print('title_texts: ', title_texts)
@@ -131,38 +133,38 @@ else:
     tokenizer = fit_tokenizer(file_list)
     print('Fit Tokenizer Finished')
 
-word_vocab = tokenizer.word_index
-print('word counts: ', len(word_vocab))     # word counts:  406014
-print('Index of word "extruding": ', word_vocab['extruding'])
+# word_vocab = tokenizer.word_index
+# print('word counts: ', len(word_vocab))     # word counts:  406014, word counts:  1223401
+# print('Index of word "extruding": ', word_vocab['extruding'])
 
 
-source_file = open(os.path.join('../data/', 'title_Section_token.csv'), 'a', encoding='utf-8')
-
-for file_num, file in enumerate(file_list):
-    title_Section = []
-    title = []
-    label = []
-    raw_data = open(os.path.join('../data/Raw_data', file), encoding='utf-8')
-    for line in raw_data:
-        try:
-            d = json.loads(line)    # 이 과정을 생략하면 str타입으로 읽어서 append함
-            title.append(d['title'])
-            label.append(label_id[d["cpc"][0].lower()])
-            # title_Section.append([label_id[d["cpc"][0].lower()], d["title"]])
-        except:
-            pass
-    title_token = tokenizer.texts_to_sequences(title)
-    # print('title: \n', title, '\n', title_token,)
-    title_token = preprocessing.sequence.pad_sequences(title_token,
-                                                       maxlen=max_length,
-                                                       padding='pre')  # 학습 데이터를 벡터화
-    # title2 = tokenizer.sequences_to_texts(title_token)
-    # print('title: \n', title, '\n', title_token, '\n', title2)
-    data = {'label': label, 'title': title_token}
-
-    df = pd.DataFrame(data=data)
-    # df.to_csv(source_file, sep='\t', header=False, index=False)
-    print('Reading File_{}_{} finished'.format(file_num+1, file))
+# source_file = open(os.path.join('../data/', 'title_Section_token.csv'), 'a', encoding='utf-8')
+#
+# for file_num, file in enumerate(file_list):
+#     title_Section = []
+#     title = []
+#     label = []
+#     raw_data = open(os.path.join('../data/Raw_data', file), encoding='utf-8')
+#     for line in raw_data:
+#         try:
+#             d = json.loads(line)    # 이 과정을 생략하면 str타입으로 읽어서 append함
+#             title.append(d['title'])
+#             label.append(label_id[d["cpc"][0].lower()])
+#             # title_Section.append([label_id[d["cpc"][0].lower()], d["title"]])
+#         except:
+#             pass
+#     title_token = tokenizer.texts_to_sequences(title)
+#     # print('title: \n', title, '\n', title_token,)
+#     title_token = preprocessing.sequence.pad_sequences(title_token,
+#                                                        maxlen=max_length,
+#                                                        padding='pre')  # 학습 데이터를 벡터화
+#     # title2 = tokenizer.sequences_to_texts(title_token)
+#     # print('title: \n', title, '\n', title_token, '\n', title2)
+#     data = {'label': label, 'title': title_token}
+#
+#     df = pd.DataFrame(data=data)
+#     # df.to_csv(source_file, sep='\t', header=False, index=False)
+#     print('Reading File_{}_{} finished'.format(file_num+1, file))
 """
 title: 
  ['Method for extruding brittle materials', 'Toughening roll die work method for metallic material', 'Automatic apparatus and method for simultaneously forming eyes on each end of a leaf spring blank', 'Neckerflanger for metal cans', 'Method of forming constriction in tubing', 'Vibration densitometer'] 
