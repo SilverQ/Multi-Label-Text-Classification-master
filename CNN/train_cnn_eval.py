@@ -4,11 +4,11 @@ import os
 import pickle
 import json
 import numpy as np
-from tqdm import tqdm
+# from tqdm import tqdm
 from tensorflow.keras import preprocessing
-from sklearn.model_selection import train_test_split
-from tensorflow.keras.utils import plot_model
-from tensorflow.keras import backend
+# from sklearn.model_selection import train_test_split
+# from tensorflow.keras.utils import plot_model
+# from tensorflow.keras import backend
 
 tf.compat.v1.enable_eager_execution
 
@@ -18,7 +18,7 @@ source_txt = os.path.join('../data', 'title_Section.txt')
 EMB_SIZE = 100
 RNG_SEED = 100   # 어제 실험한 것과 오늘 실험한게 일관성을 가지려면 초기값 고정 필요
 BATCH_SIZE = 128
-NUM_EPOCHS = 10
+NUM_EPOCHS = 2
 label_id = {'a': 0, 'b': 1, 'c': 2, 'd': 3, 'e': 4, 'f': 5, 'g': 6, 'h': 7, 'y': 8}
 id_label = {i: l for l, i in label_id.items()}
 
@@ -67,50 +67,10 @@ def read_data(file):
     # print('title: \n', title, '\n', title_token, '\n', title2)
     return label, title_token
 
-# def train_input_fn():
-#     dataset = tf.data.Dataset.from_tensor_slices((input_train, label_train))
-#     dataset = dataset.shuffle(buffer_size=len(input_train))
-#     dataset = dataset.batch(BATCH_SIZE)
-#     dataset = dataset.map(mapping_fn)
-#     dataset = dataset.repeat(count=NUM_EPOCHS)
-#
-#     return dataset
-
-
-# dataset = (tf.data.TextLineDataset(source_csv).map(decode_csv))  # Read text file
-
-# [input_eval, label_eval] = read_data()
-#
-# input_train, input_eval, label_train, label_eval = train_test_split(input_eval, label_eval,
-#                                                                     test_size=TEST_SPLIT,
-#                                                                     random_state=RNG_SEED)
-# print('\n')
-# print('input_train: ', input_train)
-# print('input_eval: ', input_eval)
-# print('label_train: ', label_train)
-# print('label_eval: ', label_eval)
-
 
 def mapping_fn(X, Y):
     inputs, label = {'x': X}, Y
     return inputs, label
-
-
-def train_input_fn():
-    dataset = tf.data.Dataset.from_tensor_slices((input_train, label_train))
-    dataset = dataset.shuffle(buffer_size=len(input_train))
-    dataset = dataset.batch(BATCH_SIZE)
-    dataset = dataset.map(mapping_fn)
-    dataset = dataset.repeat(count=NUM_EPOCHS)
-    return dataset
-
-
-def eval_input_fn():
-    dataset = tf.data.Dataset.from_tensor_slices((input_eval, label_eval))
-    #     dataset = dataset.shuffle(buffer_size=len(input_eval))
-    dataset = dataset.batch(BATCH_SIZE)
-    dataset = dataset.map(mapping_fn)
-    return dataset
 
 
 def model_fn(features, labels, mode, params):
@@ -176,64 +136,74 @@ def model_fn(features, labels, mode, params):
     # plot_model(model, to_file='model.png')
 
 
-# tf.logging.set_verbosity(tf.logging.INFO)
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
 
 # strategy = tf.contrib.distribute.OneDeviceStrategy(device='/gpu:0')
 # config = tf.estimator.RunConfig(train_distribute=strategy)
-# est = tf.estimator.Estimator(model_fn, model_dir="title_to_section/checkpoint", config=config)
-est = tf.estimator.Estimator(model_fn, model_dir="title_to_section/checkpoint")
-
-for file in tqdm(file_list):
-    [label, title_token] = read_data(file)
-
-    input_train, input_eval, label_train, label_eval = train_test_split(title_token, label,
-                                                                        test_size=TEST_SPLIT,
-                                                                        random_state=RNG_SEED)
-    # print('\n')
-    # print('title_token: ', title_token)
-    # print('label_train: ', label_train)
-
-    est.train(train_input_fn)
-    valid = est.evaluate(eval_input_fn)
-
-# for line in dataset.take(2):
-#     print(line, line[0], line[1])
+# est = tf.estimator.Estimator(model_fn, model_dir="data_out/checkpoint/yoon_kim", config=config)
+est = tf.estimator.Estimator(model_fn, model_dir="data_out/checkpoint/yoon_kim")
 
 
-# [test_label, test_title_token] = read_data(test_file_list[0])
-#
-#
-# def test_input_fn():
-#     dataset = tf.data.Dataset.from_tensor_slices((test_title_token, test_label))
-#     dataset = dataset.batch(BATCH_SIZE)
-#     dataset = dataset.map(mapping_fn)
-#     iterator = dataset.make_one_shot_iterator()
-#
-#     return iterator.get_next()
-#
-#
-# test_output = [pred['prob'] for pred in est.predict(test_input_fn)]
-# test_output = np.argmax(np.array(test_output), axis=1)
-# # test_label = test_label.numpy()
-#
-# print('test data shape: ', np.shape(test_output))
-# print('top3 label and tokens: ', test_label[0:3], '\n', test_title_token[0:3])
-# test_title = tokenizer.sequences_to_texts(test_title_token[0:3])
-# print('title test: ', test_title)
-# print('expected out: ', test_output[0:3])
-# print('expected label: ', [id_label[i] for i in test_output[:3]])
-#
-# acc = sum(1 for a, b in zip(test_label, test_output) if a == b) / len(test_label) * 100.0
-# print('test accuracy : ', acc)      # 74.33373324719804
-#
-# error_list = np.array([[a, b, a == b] for a, b in zip(test_label, test_output)])
-# print(error_list[0:30])
-# error_list = np.array([i for i, item in enumerate(error_list) if item[2] == 0])
-#
-# # print(error_list)
-# print('label: ', id_label[error_list[0]], 'expected label: ', id_label[test_label[error_list[0]]])
-# print(list(test_title_token[error_list[0]]))
-# error_title = tokenizer.sequences_to_texts(list(test_title_token[error_list[0]]))
-# print('error_title: ', error_title)
-# # title2 = tokenizer.sequences_to_texts(title_token)
+[test_label, test_title_token] = read_data(test_file_list[2])
+
+
+def test_input_fn():
+    dataset = tf.data.Dataset.from_tensor_slices((test_title_token, test_label))
+    dataset = dataset.batch(BATCH_SIZE)
+    dataset = dataset.map(mapping_fn)
+    iterator = dataset.make_one_shot_iterator()
+
+    return iterator.get_next()
+
+
+test_output = [pred['prob'] for pred in est.predict(test_input_fn)]
+test_output = np.argmax(np.array(test_output), axis=1)
+# test_label = test_label.numpy()
+
+print('test data shape: ', np.shape(test_output))
+print('top3 label and tokens: ', test_label[0:3], '\n', test_title_token[0:3])
+test_title = tokenizer.sequences_to_texts(test_title_token[0:3])
+print('title test: ', test_title)
+print('expected out: ', test_output[0:3])
+print('expected label: ', [id_label[i] for i in test_output[:3]])
+
+tot = len(test_label)
+corr = sum(1 for a, b in zip(test_label, test_output) if a == b)
+acc = corr / tot
+print('test accuracy : total {0}, correct {1}, accuracy {2:.2%}'.format(tot, corr, acc))      # 74.33373324719804
+
+error_list = np.array([[a, b, a == b] for a, b in zip(test_label, test_output)])
+print(error_list[0:5])
+error_list = np.array([i for i, [a, b, check] in enumerate(error_list) if check == 0])
+
+print(error_list[:5])      # [ 4  6 31 35 39 42 44 48 55 62]
+error_id = 1
+
+
+def print_error_data(id):
+    print('label: ', id_label[error_list[id]], 'predict: ', id_label[test_label[error_list[id]]])
+    print('error_title_token: ', list(test_title_token[error_list[id]]))
+    error_title = tokenizer.sequences_to_texts(list([test_title_token[error_list[id]]]))
+    print('error_title: ', error_title)
+    # title2 = tokenizer.sequences_to_texts(title_token)
+
+
+print_error_data(1)
+# print_error_data(2)
+# print_error_data(3)
+# print_error_data(4)
+# print_error_data(5)
+# print_error_data(6)
+# print_error_data(7)
+# print_error_data(8)
+# print_error_data(9)
+
+"""
+label:  e expected label:  c
+[1119, 3, 12889, 15, 19, 8754, 13, 277, 290, 439]
+error_title:  ['polymerization of lactams in an extruder with controlled output rate']
+
+label:  g predict:  g
+[0, 0, 0, 0, 0, 0, 0, 2470, 580, 10372]
+error_title:  ['Blood plasma fractionation']
+"""
