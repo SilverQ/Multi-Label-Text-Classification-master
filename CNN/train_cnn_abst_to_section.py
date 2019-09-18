@@ -15,8 +15,8 @@ tf.compat.v1.enable_eager_execution
 data_path = '../data/'
 EMB_SIZE = 100
 RNG_SEED = 100   # 어제 실험한 것과 오늘 실험한게 일관성을 가지려면 초기값 고정 필요
-BATCH_SIZE = 64
-NUM_EPOCHS = 2
+BATCH_SIZE = 8
+NUM_EPOCHS = 1
 label_id = {'a': 0, 'b': 1, 'c': 2, 'd': 3, 'e': 4, 'f': 5, 'g': 6, 'h': 7, 'y': 8}
 id_label = {i: l for l, i in label_id.items()}
 
@@ -94,7 +94,7 @@ def mapping_fn(X, Y):
 
 def train_input_fn():
     dataset = tf.data.Dataset.from_tensor_slices((input_train, label_train))
-    dataset = dataset.shuffle(buffer_size=len(input_train))
+    dataset = dataset.shuffle(buffer_size=64)
     dataset = dataset.batch(BATCH_SIZE)
     dataset = dataset.map(mapping_fn)
     dataset = dataset.repeat(count=NUM_EPOCHS)
