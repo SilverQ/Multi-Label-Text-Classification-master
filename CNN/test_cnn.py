@@ -6,7 +6,7 @@ import sys
 import time
 import numpy as np
 import tensorflow as tf
-
+import pickle
 from utils import checkmate as cm
 from utils import data_helpers as dh
 from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score, average_precision_score
@@ -29,6 +29,10 @@ MODEL_DIR = 'runs/' + MODEL + '/checkpoints/'
 BEST_MODEL_DIR = 'runs/' + MODEL + '/bestcheckpoints/'
 SAVE_DIR = 'results/' + MODEL
 
+with open('../data/cpc_idx.json', 'rb') as data_file:
+    data = pickle.load(data_file)
+    num_classes = len(data)        # 680
+
 # Data Parameters
 tf.flags.DEFINE_string("training_data_file", TRAININGSET_DIR, "Data source for the training data.")
 tf.flags.DEFINE_string("validation_data_file", VALIDATIONSET_DIR, "Data source for the validation data")
@@ -45,12 +49,12 @@ tf.flags.DEFINE_string("filter_sizes", "3,4,5", "Comma-separated filter sizes (d
 tf.flags.DEFINE_integer("num_filters", 128, "Number of filters per filter size (default: 128)")
 tf.flags.DEFINE_float("dropout_keep_prob", 0.5, "Dropout keep probability (default: 0.5)")
 tf.flags.DEFINE_float("l2_reg_lambda", 0.0, "L2 regularization lambda (default: 0.0)")
-tf.flags.DEFINE_integer("num_classes", 367, "Number of labels (depends on the task)")
+tf.flags.DEFINE_integer("num_classes", num_classes, "Number of labels (depends on the task)")
 tf.flags.DEFINE_integer("top_num", 5, "Number of top K prediction classes (default: 5)")
 tf.flags.DEFINE_float("threshold", 0.5, "Threshold for prediction classes (default: 0.5)")
 
 # Test Parameters
-tf.flags.DEFINE_integer("batch_size", 512, "Batch Size (default: 1)")
+tf.flags.DEFINE_integer("batch_size", 1024, "Batch Size (default: 1)")
 
 # Misc Parameters
 tf.flags.DEFINE_boolean("allow_soft_placement", True, "Allow device soft device placement")
@@ -59,9 +63,9 @@ tf.flags.DEFINE_boolean("gpu_options_allow_growth", True, "Allow gpu options gro
 
 FLAGS = tf.flags.FLAGS
 FLAGS(sys.argv)
-dilim = '-' * 100
-logger.info('\n'.join([dilim, *['{0:>50}|{1:<50}'.format(attr.upper(), FLAGS.__getattr__(attr))
-                                for attr in sorted(FLAGS.__dict__['__wrapped'])], dilim]))
+# dilim = '-' * 100
+# logger.info('\n'.join([dilim, *['{0:>50}|{1:<50}'.format(attr.upper(), FLAGS.__getattr__(attr))
+#                                 for attr in sorted(FLAGS.__dict__['__wrapped'])], dilim]))
 
 
 def test_cnn():

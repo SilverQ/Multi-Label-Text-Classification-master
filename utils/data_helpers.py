@@ -268,7 +268,9 @@ def data_word2vec(input_file, num_labels, word2vec_model):
 
     def _create_onehot_labels(labels_index):
         label = [0] * num_labels
+        # print(len(label))
         for item in labels_index:
+            # print(item)
             label[int(item)] = 1
         return label
 
@@ -288,6 +290,7 @@ def data_word2vec(input_file, num_labels, word2vec_model):
             testid = data['testid']
             features_content = data['features_content']
             labels_index = data['labels_index']
+            # print(labels_index)
             labels_num = data['labels_num']
 
             testid_list.append(testid)
@@ -296,7 +299,7 @@ def data_word2vec(input_file, num_labels, word2vec_model):
             onehot_labels_list.append(_create_onehot_labels(labels_index))
             labels_num_list.append(labels_num)
             total_line += 1
-            if total_line % 100 == 0:
+            if total_line % 100000 == 0:
                 print('{0} lines loaded'.format(total_line))
 
     class _Data:
@@ -492,7 +495,7 @@ def load_data_and_labels(data_file, num_labels, embedding_size, data_aug_flag):
     Return split sentences, labels and the max sentence length of the research data.
 
     Args:
-        data_file: The research data
+        data_file: The research data ( = '../data/Train.json')
         num_labels: The number of classes
         embedding_size: The embedding size
         data_aug_flag: The flag of data augmented

@@ -7,7 +7,7 @@ import time
 import logging
 import numpy as np
 import tensorflow as tf
-
+import pickle
 from tensorboard.plugins import projector
 from text_rcnn import TextRCNN
 from utils import checkmate as cm
@@ -30,6 +30,10 @@ if TRAIN_OR_RESTORE == 'T':
 if TRAIN_OR_RESTORE == 'R':
     logger = dh.logger_fn("tflog", "logs/restore-{0}.log".format(time.asctime()))
 
+with open('../data/cpc_idx.json', 'rb') as data_file:
+    data = pickle.load(data_file)
+    num_classes = len(data)        # 680
+
 TRAININGSET_DIR = '../data/Train.json'
 VALIDATIONSET_DIR = '../data/Validation.json'
 METADATA_DIR = '../data/metadata.tsv'
@@ -42,7 +46,7 @@ tf.flags.DEFINE_string("metadata_file", METADATA_DIR, "Metadata file for embeddi
 tf.flags.DEFINE_string("train_or_restore", TRAIN_OR_RESTORE, "Train or Restore.")
 
 # Model Hyperparameters
-tf.flags.DEFINE_float("learning_rate", 0.001, "The learning rate (default: 0.001)")
+tf.flags.DEFINE_float("learning_rate", 0.002, "The learning rate (default: 0.001)")
 tf.flags.DEFINE_integer("pad_seq_len", 100, "Recommended padding Sequence length of data (depends on the data)")
 tf.flags.DEFINE_integer("embedding_dim", 100, "Dimensionality of character embedding (default: 128)")
 tf.flags.DEFINE_integer("embedding_type", 1, "The embedding type (default: 1)")
@@ -52,16 +56,16 @@ tf.flags.DEFINE_string("filter_sizes", "3,4,5", "Comma-separated filter sizes (d
 tf.flags.DEFINE_integer("num_filters", 128, "Number of filters per filter size (default: 128)")
 tf.flags.DEFINE_float("dropout_keep_prob", 0.5, "Dropout keep probability (default: 0.5)")
 tf.flags.DEFINE_float("l2_reg_lambda", 0.0, "L2 regularization lambda (default: 0.0)")
-tf.flags.DEFINE_integer("num_classes", 367, "Number of labels (depends on the task)")
+tf.flags.DEFINE_integer("num_classes", num_classes, "Number of labels (depends on the task)")
 tf.flags.DEFINE_integer("top_num", 5, "Number of top K prediction classes (default: 5)")
 tf.flags.DEFINE_float("threshold", 0.5, "Threshold for prediction classes (default: 0.5)")
 
 # Training Parameters
-tf.flags.DEFINE_integer("batch_size", 1024, "Batch Size (default: 256)")
-tf.flags.DEFINE_integer("num_epochs", 150, "Number of training epochs (default: 100)")
-tf.flags.DEFINE_integer("evaluate_every", 5000, "Evaluate model on dev set after this many steps (default: 5000)")
+tf.flags.DEFINE_integer("batch_size", 64, "Batch Size (default: 256)")
+tf.flags.DEFINE_integer("num_epochs", 10, "Number of training epochs (default: 100)")
+tf.flags.DEFINE_integer("evaluate_every", 1000, "Evaluate model on dev set after this many steps (default: 5000)")
 tf.flags.DEFINE_float("norm_ratio", 2, "The ratio of the sum of gradients norms of trainable variable (default: 1.25)")
-tf.flags.DEFINE_integer("decay_steps", 5000, "how many steps before decay learning rate. (default: 500)")
+tf.flags.DEFINE_integer("decay_steps", 1000, "how many steps before decay learning rate. (default: 500)")
 tf.flags.DEFINE_float("decay_rate", 0.95, "Rate of decay for learning rate. (default: 0.95)")
 tf.flags.DEFINE_integer("checkpoint_every", 1000, "Save model after this many steps (default: 1000)")
 tf.flags.DEFINE_integer("num_checkpoints", 10, "Number of checkpoints to store (default: 50)")
@@ -73,9 +77,9 @@ tf.flags.DEFINE_boolean("gpu_options_allow_growth", True, "Allow gpu options gro
 
 FLAGS = tf.flags.FLAGS
 FLAGS(sys.argv)
-dilim = '-' * 100
-logger.info('\n'.join([dilim, *['{0:>50}|{1:<50}'.format(attr.upper(), FLAGS.__getattr__(attr))
-                                for attr in sorted(FLAGS.__dict__['__wrapped'])], dilim]))
+# dilim = '-' * 100
+# logger.info('\n'.join([dilim, *['{0:>50}|{1:<50}'.format(attr.upper(), FLAGS.__getattr__(attr))
+#                                 for attr in sorted(FLAGS.__dict__['__wrapped'])], dilim]))
 
 
 def train_rcnn():

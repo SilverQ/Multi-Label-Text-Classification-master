@@ -7,12 +7,15 @@ import time
 import logging
 import numpy as np
 import tensorflow as tf
-
+import pickle
+# from matplotlib import pylab
 from tensorboard.plugins import projector
 from text_cnn import TextCNN
 from utils import checkmate as cm
 from utils import data_helpers as dh
 from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score, average_precision_score
+
+os.environ["CUDA_VISIBLE_DEVICES"]='0'
 
 # Parameters
 # ==================================================
@@ -41,6 +44,12 @@ tf.flags.DEFINE_string("metadata_file", METADATA_DIR, "Metadata file for embeddi
                                                       "(Each line is a word segment in metadata_file).")
 tf.flags.DEFINE_string("train_or_restore", TRAIN_OR_RESTORE, "Train or Restore.")
 
+with open('../data/cpc_idx.json', 'rb') as data_file:
+    data = pickle.load(data_file)
+    num_classes = len(data)        # 680
+
+# Subclass_List.txt 파일에 Subclass 목록을 넣어뒀다. 여기에 해당하지 않는 training 데이터는 생성하지 않도록 바꿔보자
+
 # Model Hyperparameters
 tf.flags.DEFINE_float("learning_rate", 0.001, "The learning rate (default: 0.001)")
 tf.flags.DEFINE_integer("pad_seq_len", 100, "Recommended padding Sequence length of data (depends on the data)")
@@ -48,22 +57,22 @@ tf.flags.DEFINE_integer("embedding_dim", 100, "Dimensionality of character embed
 tf.flags.DEFINE_integer("embedding_type", 1, "The embedding type (default: 1)")
 tf.flags.DEFINE_integer("fc_hidden_size", 1024, "Hidden size for fully connected layer (default: 1024)")
 tf.flags.DEFINE_string("filter_sizes", "3,4,5", "Comma-separated filter sizes (default: '3,4,5')")
-tf.flags.DEFINE_integer("num_filters", 128, "Number of filters per filter size (default: 128)")
+tf.flags.DEFINE_integer("num_filters", 64, "Number of filters per filter size (default: 128)")
 tf.flags.DEFINE_float("dropout_keep_prob", 0.5, "Dropout keep probability (default: 0.5)")
 tf.flags.DEFINE_float("l2_reg_lambda", 0.0, "L2 regularization lambda (default: 0.0)")
-tf.flags.DEFINE_integer("num_classes", 367, "Number of labels (depends on the task)")
+tf.flags.DEFINE_integer("num_classes", num_classes, "Number of labels (depends on the task)")
 tf.flags.DEFINE_integer("top_num", 5, "Number of top K prediction classes (default: 5)")
 tf.flags.DEFINE_float("threshold", 0.5, "Threshold for prediction classes (default: 0.5)")
 
 # Training Parameters
-tf.flags.DEFINE_integer("batch_size", 1024, "Batch Size (default: 256)")
-tf.flags.DEFINE_integer("num_epochs", 150, "Number of training epochs (default: 100)")
-tf.flags.DEFINE_integer("evaluate_every", 10, "Evaluate model on dev set after this many steps (default: 5000)")
+tf.flags.DEFINE_integer("batch_size", 4, "Batch Size (default: 256)")
+tf.flags.DEFINE_integer("num_epochs", 3, "Number of training epochs (default: 100)")
+tf.flags.DEFINE_integer("evaluate_every", 1000, "Evaluate model on dev set after this many steps (default: 5000)")
 tf.flags.DEFINE_float("norm_ratio", 2, "The ratio of the sum of gradients norms of trainable variable (default: 1.25)")
 tf.flags.DEFINE_integer("decay_steps", 5000, "how many steps before decay learning rate. (default: 500)")
 tf.flags.DEFINE_float("decay_rate", 0.95, "Rate of decay for learning rate. (default: 0.95)")
-tf.flags.DEFINE_integer("checkpoint_every", 10, "Save model after this many steps (default: 1000)")
-tf.flags.DEFINE_integer("num_checkpoints", 10, "Number of checkpoints to store (default: 50)")
+tf.flags.DEFINE_integer("checkpoint_every", 1000, "Save model after this many steps (default: 1000)")
+tf.flags.DEFINE_integer("num_checkpoints", 5, "Number of checkpoints to store (default: 50)")
 
 # Misc Parameters
 tf.flags.DEFINE_boolean("allow_soft_placement", True, "Allow device soft device placement")
@@ -72,9 +81,9 @@ tf.flags.DEFINE_boolean("gpu_options_allow_growth", True, "Allow gpu options gro
 
 FLAGS = tf.flags.FLAGS
 FLAGS(sys.argv)
-dilim = '-' * 100
-logger.info('\n'.join([dilim, *['{0:>50}|{1:<50}'.format(attr.upper(), FLAGS.__getattr__(attr))
-                                for attr in sorted(FLAGS.__dict__['__wrapped'])], dilim]))
+# dilim = '-' * 100
+# logger.info('\n'.join([dilim, *['{0:>50}|{1:<50}'.format(attr.upper(), FLAGS.__getattr__(attr))
+#                                 for attr in sorted(FLAGS.__dict__['__wrapped'])], dilim]))
 
 
 def train_cnn():
@@ -140,7 +149,7 @@ def train_cnn():
                     sparsity_summary = tf.summary.scalar("{0}/grad/sparsity".format(v.name), tf.nn.zero_fraction(g))
                     grad_summaries.append(grad_hist_summary)
                     grad_summaries.append(sparsity_summary)
-            grad_summaries_merged = tf.summary.merge(grad_summaries)
+            grad_summaries_merged = tf.compat.v1.summary.merge(grad_summaries)
 
             # Output directory for models and summaries
             if FLAGS.train_or_restore == 'R':
@@ -161,17 +170,17 @@ def train_cnn():
             best_checkpoint_dir = os.path.abspath(os.path.join(out_dir, "bestcheckpoints"))
 
             # Summaries for loss
-            loss_summary = tf.summary.scalar("loss", cnn.loss)
+            loss_summary = tf.compat.v1.summary.scalar("loss", cnn.loss)
 
             # Train summaries
-            train_summary_op = tf.summary.merge([loss_summary, grad_summaries_merged])
+            train_summary_op = tf.compat.v1.summary.merge([loss_summary, grad_summaries_merged])
             train_summary_dir = os.path.join(out_dir, "summaries", "train")
-            train_summary_writer = tf.summary.FileWriter(train_summary_dir, sess.graph)
+            train_summary_writer = tf.compat.v1.summary.FileWriter(train_summary_dir, sess.graph)
 
             # Validation summaries
-            validation_summary_op = tf.summary.merge([loss_summary])
+            validation_summary_op = tf.compat.v1.summary.merge([loss_summary])
             validation_summary_dir = os.path.join(out_dir, "summaries", "validation")
-            validation_summary_writer = tf.summary.FileWriter(validation_summary_dir, sess.graph)
+            validation_summary_writer = tf.compat.v1.summary.FileWriter(validation_summary_dir, sess.graph)
 
             saver = tf.train.Saver(tf.global_variables(), max_to_keep=FLAGS.num_checkpoints)
             best_saver = cm.BestCheckpointSaver(save_dir=best_checkpoint_dir, num_to_keep=3, maximize=True)
