@@ -15,7 +15,7 @@ from utils import checkmate as cm
 from utils import data_helpers as dh
 from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score, average_precision_score
 
-os.environ["CUDA_VISIBLE_DEVICES"]='0'
+os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 
 # Parameters
 # ==================================================
