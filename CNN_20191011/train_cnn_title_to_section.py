@@ -11,11 +11,16 @@ from sklearn.model_selection import train_test_split
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras import backend
 from tensorflow.keras.preprocessing.sequence import pad_sequences
-import spacy
+# import spacy
 from collections import defaultdict
+from collections import Counter
+from spacy.tokenizer import Tokenizer
+from spacy.lang.en import English
 
-en = spacy.load('en')
-en.pipeline = [en.tagger, en.parser]
+nlp = English()
+tokenizer = nlp.Defaults.create_tokenizer(nlp)
+# en = spacy.load('en_core_web_sm')
+# en.pipeline = [en.tagger, en.parser]
 
 tf.compat.v1.enable_eager_execution
 
@@ -68,8 +73,7 @@ test_file_list = [file for file in test_file_list if file.endswith(".txt")]
 
 class Dataset:
 
-    def __init__(self, train_path, test_path, is_shuffle, train_bs,
-                 test_bs, epoch, max_length, vocab_path):
+    def __init__(self, train_path, test_path, is_shuffle, train_bs, test_bs, epoch, max_length, vocab_path):
         self.train_path = train_path
         self.test_path = test_path
         self.is_shuffle = is_shuffle
@@ -82,10 +86,11 @@ class Dataset:
         self.special_tokens = ['<PAD>', '<BOS>', '<EOS>', '<UNK>']
 
         if not os.path.exists(vocab_path):
-            print('There is no vocabulary...')
-            print('Building vocabulary...')
-            self.build_vocab_by_patdata(vocab_path)
-            print('Successfully build vocabulary!')
+            print('No vocabulary.')
+            print('Making vocabulary.')
+            # self.build_vocab_by_patdata(vocab_path)
+            self.build_vocab_by_patent(vocab_path)
+            print('Complete build vocabulary!')
 
         print('Loading vocabulary...')
         self.idx2word, self.word2idx = pickle.load(open(vocab_path, 'rb'))
@@ -95,8 +100,18 @@ class Dataset:
         with open(os.path.join(raw_path, file), encoding='utf-8') as f:
             for line in f:
                 yield json.loads(line)
+            # yield json.loads()
 
-    def word_frequency(self):
+    def build_freq(self, word_list):
+        word_counts = Counter(word_list)
+        print('word_list: ', len(word_list), word_list)
+        print('word_counts_1: ', len(word_counts), word_counts)
+        print('word_counts_2: ', len(word_counts.most_common()), word_counts.most_common())
+        """
+        word_list:  686 ['Adjustable', 'shoulder', 'device', 'for', 'hard', 'upper', 'torso', 'suit', 'A', 'suit', 'includes', 'a', 'hard', 'upper', 'torso', 'providing', 'shoulder', 'apertures.', 'A', 'repositionable', 'scye', 'bearing', 'is', 'arranged', 'at', 'a', 'shoulder', 'aperture.', 'An', 'adjustable', 'shoulder', 'device', 'interconnects', 'the', 'scye', 'bearing', 'and', 'the', 'hard', 'upper', 'torso.', 'The', 'adjustable', 'shoulder', 'device', 'is', 'configured', 'to', 'move', 'the', 'scye', 'bearing', 'between', 'first', 'and', 'second', 'shoulder', 'width', 'positions', 'relative', 'to', 'the', 'hard', 'upper', 'torso.', 'A', 'method', 'of', 'donning', 'a', 'suit', 'includes', 'the', 'steps', 'of', 'adjusting', 'a', 'scye', 'bearing', 'relative', 'to', 'a', 'hard', 'upper', 'torso', 'to', 'a', 'desired', 'shoulder', 'width', 'position.', 'The', 'scye', 'bearing', 'can', 'be', 'subsequently', 'repositioned', 'for', 'desired', 'crewmember', 'fit', 'and', 'use', 'while', 'the', 'desired', 'shoulder', 'width', 'position', 'is', 'maintained.', 'Eye', 'protectors', 'An', 'eye', 'protector', '(16)', 'is', 'provided', 'for', 'mounting', 'on', 'a', 'helmet', '(10)', 'of', 'the', 'type', 'worn', 'by', 'a', 'firefighter', 'or', 'other', 'emergency', 'worker,', 'the', 'helmet', 'having', 'a', 'brim', '(14)', 'that', 'projects', 'forwardly', 'and', 'laterally', 'from', 'a', 'lower', 'part', 'of', 'a', 'crown', '(12).', 'The', 'eye', 'protector', '(16)', 'includes', 'a', 'bracket', '(20)', 'mounted', 'to', 'the', 'brim', '(14),', 'a', 'pair', 'of', 'eye', 'shields', '(18)', 'movable', 'between', 'a', 'storage', 'position', 'extending', 'along', 'the', 'brim', '(14)', 'and', 'a', 'usage', 'position', 'extending', 'downward', 'from', 'the', 'brim', '(14)', 'to', 'shield', 'the', 'eyes', 'of', 'the', 'wearer,', 'and', 'a', 'pair', 'of', 'hinges', '(22)', 'to', 'connect', 'the', 'eye', 'shields', '(18)', 'to', 'the', 'bracket', '(20)', 'for', 'movement', 'between', 'the', 'storage', 'and', 'usage', 'positions.', 'Each', 'of', 'the', 'hinges', '(22)', 'connects', 'a', 'corresponding', 'one', 'of', 'the', 'eye', 'shields', '(18)', 'and', 'includes', 'a', 'plurality', 'of', 'aligned', 'hinge', 'openings', '(24,26)', 'on', 'the', 'eye', 'shield', '(18)', 'and', 'the', 'bracket', '(20),', 'a', 'socket', '(28)', 'on', 'the', 'eye', 'shield', '(18),', 'and', 'a', 'hinge', 'pin', '(30)', 'extending', 'through', 'the', 'hinge', 'openings', '(24,26)', 'and', 'have', 'a', 'first', 'end', '(32)', 'releasably', 'fixed', 'in', 'the', 'socket', '(28)', 'and', 'a', 'second', 'end', '(34)', 'that', 'is', 'exposed', 'outside', 'of', 'the', 'openings', '(24,26).', 'Combination', 'headgear', 'and', 'eye', 'protection', 'system', 'A', 'combination', 'headgear', 'assembly', 'and', 'protective', 'eyewear', 'system', 'includes', 'protective', 'eyewear', 'that', 'attaches', 'to', 'a', 'headgear', 'assembly', 'via', 'magnetic', 'connectors.', 'The', 'headgear', 'assembly', 'includes', 'an', 'adjustable', 'headrest', 'with', 'first', 'and', 'second', 'ends.', 'The', 'first', 'end', 'connects', 'to', 'a', 'first', 'spherical', 'capsule', 'having', 'a', 'first', 'side', 'wall,', 'and', 'the', 'second', 'end', 'connects', 'to', 'a', 'second', 'spherical', 'capsule', 'having', 'a', 'second', 'side', 'wall.', 'The', 'protective', 'eyewear', 'includes', 'a', 'vision', 'blade', 'with', 'a', 'first', 'end', 'attaching', 'via', 'a', 'first', 'finger', 'to', 'a', 'first', 'telescoping', 'member', 'while', 'a', 'second', 'end', 'attaches', 'via', 'a', 'second', 'finger', 'to', 'a', 'second', 'telescoping', 'member.', 'A', 'first', 'magnetic', 'connector', 'is', 'positioned', 'between', 'the', 'first', 'telescoping', 'member', 'and', 'the', 'first', 'side', 'wall', 'of', 'the', 'first', 'spherical', 'capsule,', 'and', 'a', 'second', 'magnetic', 'connector', 'is', 'positioned', 'between', 'the', 'first', 'telescoping', 'member', 'and', 'the', 'second', 'side', 'wall', 'of', 'the', 'second', 'spherical', 'capsule.', 'Garment', 'protective', 'assembly', 'A', 'garment', 'such', 'as', 'a', 'shirt', 'or', 'pants', 'has', 'a', 'front', 'layer', 'with', 'portions', 'which', 'define', 'a', 'central', 'opening', 'defined', 'by', 'an', 'inner', 'periphery', 'and', 'positionable', 'to', 'overlie', 'a', 'portion', 'of', 'the', 'joint', 'to', 'be', 'protected', 'such', 'as', 'a', 'knee', 'or', 'an', 'elbow.', 'A', 'removable', 'protective', 'insert', 'is', 'larger', 'than', 'the', 'central', 'opening', 'and', 'has', 'a', 'unitary', 'cap', 'sewn', 'thereto.', 'The', 'cap', 'has', 'an', 'upper', 'segment', 'separated', 'from', 'a', 'lower', 'segment', 'by', 'a', 'bending', 'joint', 'defined', 'by', 'at', 'least', 'one', 'groove', 'which', 'extends', 'substantially', 'across', 'the', 'cap.', 'The', 'upper', 'segment', 'and', 'the', 'lower', 'segment', 'are', 'separately', 'fixed', 'to', 'the', 'protective', 'insert', 'by', 'stitching.', 'The', 'upper', 'segment', 'and', 'the', 'lower', 'segment', 'have', 'an', 'outwardly', 'projecting', 'flange', 'which', 'overlies', 'the', 'protective', 'insert,', 'the', 'flange', 'having', 'portions', 'which', 'engage', 'the', 'front', 'layer', 'of', 'the', 'garment', 'between', 'the', 'cap', 'flange', 'and', 'the', 'protective', 'insert.', 'A', 'slot', 'in', 'the', 'insert', 'ventilates', 'through', 'the', 'front', 'layer.', 'Visored', 'cloth', 'headgear', 'An', 'item', 'of', 'headgear', 'comprised', 'of', 'a', 'visor', 'bill', 'attached', 'to', 'a', 'square', 'piece', 'of', 'cloth', 'along', 'the', 'diagonal', 'of', 'the', 'cloth', 'and', 'slightly', 'below', 'the', 'center', 'of', 'the', 'cloth.', 'The', 'visor', 'bill', 'is', 'encased', 'in', 'a', 'pocket-shaped', 'visor', 'bill', 'cover', 'before', 'it', 'is', 'stitched', 'to', 'the', 'square', 'piece', 'of', 'cloth.', 'The', 'present', 'invention', 'can', 'be', 'worn', 'as', 'a', 'visor,', 'or', 'it', 'can', 'be', 'opened', 'up', 'and', 'wrapped', 'over', 'the', 'top', 'of', 'the', 'head', 'to', 'form', 'the', 'shape', 'of', 'a', 'more', 'traditional', 'hat.']
+        word_counts_1:  251 Counter({'the': 53, 'a': 48, 'and': 26, 'of': 23, 'to': 19, 'first': 14, 'second': 12, 'The': 11, 'is': 10, 'shoulder': 8, 'upper': 8, 'A': 8, 'eye': 8, 'protective': 8, 'includes': 7, 'between': 6, 'end': 6, 'headgear': 6, 'segment': 6, 'hard': 5, 'scye': 5, 'bearing': 5, 'by': 5, 'an': 5, 'for': 4, 'be': 4, 'or': 4, 'having': 4, 'brim': 4, 'lower': 4, '(18)': 4, 'assembly': 4, 'spherical': 4, 'side': 4, 'telescoping': 4, 'which': 4, 'device': 3, 'torso': 3, 'suit': 3, 'An': 3, 'adjustable': 3, 'width': 3, 'desired': 3, 'can': 3, 'position': 3, 'on': 3, '(14)': 3, 'that': 3, 'from': 3, 'bracket': 3, 'shields': 3, 'extending': 3, 'shield': 3, 'connects': 3, 'hinge': 3, 'openings': 3, 'in': 3, 'eyewear': 3, 'via': 3, 'magnetic': 3, 'with': 3, 'member': 3, 'as': 3, 'has': 3, 'front': 3, 'insert': 3, 'cap': 3, 'flange': 3, 'cloth': 3, 'visor': 3, 'bill': 3, 'at': 2, 'torso.': 2, 'relative': 2, 'while': 2, 'protector': 2, '(16)': 2, 'helmet': 2, 'worn': 2, '(20)': 2, 'pair': 2, 'storage': 2, 'along': 2, 'usage': 2, 'hinges': 2, '(22)': 2, 'one': 2, '(24,26)': 2, 'socket': 2, '(28)': 2, 'through': 2, 'have': 2, 'fixed': 2, 'system': 2, 'attaches': 2, 'capsule': 2, 'finger': 2, 'connector': 2, 'positioned': 2, 'wall': 2, 'garment': 2, 'such': 2, 'layer': 2, 'portions': 2, 'central': 2, 'opening': 2, 'defined': 2, 'joint': 2, 'square': 2, 'piece': 2, 'cloth.': 2, 'it': 2, 'Adjustable': 1, 'providing': 1, 'apertures.': 1, 'repositionable': 1, 'arranged': 1, 'aperture.': 1, 'interconnects': 1, 'configured': 1, 'move': 1, 'positions': 1, 'method': 1, 'donning': 1, 'steps': 1, 'adjusting': 1, 'position.': 1, 'subsequently': 1, 'repositioned': 1, 'crewmember': 1, 'fit': 1, 'use': 1, 'maintained.': 1, 'Eye': 1, 'protectors': 1, 'provided': 1, 'mounting': 1, '(10)': 1, 'type': 1, 'firefighter': 1, 'other': 1, 'emergency': 1, 'worker,': 1, 'projects': 1, 'forwardly': 1, 'laterally': 1, 'part': 1, 'crown': 1, '(12).': 1, 'mounted': 1, '(14),': 1, 'movable': 1, 'downward': 1, 'eyes': 1, 'wearer,': 1, 'connect': 1, 'movement': 1, 'positions.': 1, 'Each': 1, 'corresponding': 1, 'plurality': 1, 'aligned': 1, '(20),': 1, '(18),': 1, 'pin': 1, '(30)': 1, '(32)': 1, 'releasably': 1, '(34)': 1, 'exposed': 1, 'outside': 1, '(24,26).': 1, 'Combination': 1, 'protection': 1, 'combination': 1, 'connectors.': 1, 'headrest': 1, 'ends.': 1, 'wall,': 1, 'wall.': 1, 'vision': 1, 'blade': 1, 'attaching': 1, 'member.': 1, 'capsule,': 1, 'capsule.': 1, 'Garment': 1, 'shirt': 1, 'pants': 1, 'define': 1, 'inner': 1, 'periphery': 1, 'positionable': 1, 'overlie': 1, 'portion': 1, 'protected': 1, 'knee': 1, 'elbow.': 1, 'removable': 1, 'larger': 1, 'than': 1, 'unitary': 1, 'sewn': 1, 'thereto.': 1, 'separated': 1, 'bending': 1, 'least': 1, 'groove': 1, 'extends': 1, 'substantially': 1, 'across': 1, 'cap.': 1, 'are': 1, 'separately': 1, 'stitching.': 1, 'outwardly': 1, 'projecting': 1, 'overlies': 1, 'insert,': 1, 'engage': 1, 'insert.': 1, 'slot': 1, 'ventilates': 1, 'layer.': 1, 'Visored': 1, 'item': 1, 'comprised': 1, 'attached': 1, 'diagonal': 1, 'slightly': 1, 'below': 1, 'center': 1, 'encased': 1, 'pocket-shaped': 1, 'cover': 1, 'before': 1, 'stitched': 1, 'present': 1, 'invention': 1, 'visor,': 1, 'opened': 1, 'up': 1, 'wrapped': 1, 'over': 1, 'top': 1, 'head': 1, 'form': 1, 'shape': 1, 'more': 1, 'traditional': 1, 'hat.': 1})
+        word_counts_2:  251 [('the', 53), ('a', 48), ('and', 26), ('of', 23), ('to', 19), ('first', 14), ('second', 12), ('The', 11), ('is', 10), ('shoulder', 8), ('upper', 8), ('A', 8), ('eye', 8), ('protective', 8), ('includes', 7), ('between', 6), ('end', 6), ('headgear', 6), ('segment', 6), ('hard', 5), ('scye', 5), ('bearing', 5), ('by', 5), ('an', 5), ('for', 4), ('be', 4), ('or', 4), ('having', 4), ('brim', 4), ('lower', 4), ('(18)', 4), ('assembly', 4), ('spherical', 4), ('side', 4), ('telescoping', 4), ('which', 4), ('device', 3), ('torso', 3), ('suit', 3), ('An', 3), ('adjustable', 3), ('width', 3), ('desired', 3), ('can', 3), ('position', 3), ('on', 3), ('(14)', 3), ('that', 3), ('from', 3), ('bracket', 3), ('shields', 3), ('extending', 3), ('shield', 3), ('connects', 3), ('hinge', 3), ('openings', 3), ('in', 3), ('eyewear', 3), ('via', 3), ('magnetic', 3), ('with', 3), ('member', 3), ('as', 3), ('has', 3), ('front', 3), ('insert', 3), ('cap', 3), ('flange', 3), ('cloth', 3), ('visor', 3), ('bill', 3), ('at', 2), ('torso.', 2), ('relative', 2), ('while', 2), ('protector', 2), ('(16)', 2), ('helmet', 2), ('worn', 2), ('(20)', 2), ('pair', 2), ('storage', 2), ('along', 2), ('usage', 2), ('hinges', 2), ('(22)', 2), ('one', 2), ('(24,26)', 2), ('socket', 2), ('(28)', 2), ('through', 2), ('have', 2), ('fixed', 2), ('system', 2), ('attaches', 2), ('capsule', 2), ('finger', 2), ('connector', 2), ('positioned', 2), ('wall', 2), ('garment', 2), ('such', 2), ('layer', 2), ('portions', 2), ('central', 2), ('opening', 2), ('defined', 2), ('joint', 2), ('square', 2), ('piece', 2), ('cloth.', 2), ('it', 2), ('Adjustable', 1), ('providing', 1), ('apertures.', 1), ('repositionable', 1), ('arranged', 1), ('aperture.', 1), ('interconnects', 1), ('configured', 1), ('move', 1), ('positions', 1), ('method', 1), ('donning', 1), ('steps', 1), ('adjusting', 1), ('position.', 1), ('subsequently', 1), ('repositioned', 1), ('crewmember', 1), ('fit', 1), ('use', 1), ('maintained.', 1), ('Eye', 1), ('protectors', 1), ('provided', 1), ('mounting', 1), ('(10)', 1), ('type', 1), ('firefighter', 1), ('other', 1), ('emergency', 1), ('worker,', 1), ('projects', 1), ('forwardly', 1), ('laterally', 1), ('part', 1), ('crown', 1), ('(12).', 1), ('mounted', 1), ('(14),', 1), ('movable', 1), ('downward', 1), ('eyes', 1), ('wearer,', 1), ('connect', 1), ('movement', 1), ('positions.', 1), ('Each', 1), ('corresponding', 1), ('plurality', 1), ('aligned', 1), ('(20),', 1), ('(18),', 1), ('pin', 1), ('(30)', 1), ('(32)', 1), ('releasably', 1), ('(34)', 1), ('exposed', 1), ('outside', 1), ('(24,26).', 1), ('Combination', 1), ('protection', 1), ('combination', 1), ('connectors.', 1), ('headrest', 1), ('ends.', 1), ('wall,', 1), ('wall.', 1), ('vision', 1), ('blade', 1), ('attaching', 1), ('member.', 1), ('capsule,', 1), ('capsule.', 1), ('Garment', 1), ('shirt', 1), ('pants', 1), ('define', 1), ('inner', 1), ('periphery', 1), ('positionable', 1), ('overlie', 1), ('portion', 1), ('protected', 1), ('knee', 1), ('elbow.', 1), ('removable', 1), ('larger', 1), ('than', 1), ('unitary', 1), ('sewn', 1), ('thereto.', 1), ('separated', 1), ('bending', 1), ('least', 1), ('groove', 1), ('extends', 1), ('substantially', 1), ('across', 1), ('cap.', 1), ('are', 1), ('separately', 1), ('stitching.', 1), ('outwardly', 1), ('projecting', 1), ('overlies', 1), ('insert,', 1), ('engage', 1), ('insert.', 1), ('slot', 1), ('ventilates', 1), ('layer.', 1), ('Visored', 1), ('item', 1), ('comprised', 1), ('attached', 1), ('diagonal', 1), ('slightly', 1), ('below', 1), ('center', 1), ('encased', 1), ('pocket-shaped', 1), ('cover', 1), ('before', 1), ('stitched', 1), ('present', 1), ('invention', 1), ('visor,', 1), ('opened', 1), ('up', 1), ('wrapped', 1), ('over', 1), ('top', 1), ('head', 1), ('form', 1), ('shape', 1), ('more', 1), ('traditional', 1), ('hat.', 1)]
+       """
         path = os.path.join(raw_path, 'word_freq.pickle')
         try:
             with open(path, 'rb') as freq_dist_f:
@@ -106,37 +121,80 @@ class Dataset:
         except IOError:
             pass
         freq = defaultdict(int)
-        for i, patents in enumerate(self.read_patents()):
-            doc = en.tokenizer(patents['title'])
-            for token in doc:
-                freq[token.orth_] += 1
+        for i, token in enumerate(word_list):
+            print('token.orth_:', token.orth_)
+            freq[token.orth_] += 1      # orth_	unicode	Verbatim text content (identical to Token.text). Exists mostly for consistency with the other attributes.
             if i % 10000 == 0:
                 with open(path, 'wb') as freq_dist_f:
                     pickle.dump(freq, freq_dist_f)
-                print('dump at {}'.format(i))
+                print('dump at %d\n' % i)
         return freq
 
-    def build_vocab(self, word_list):
-        from collections import Counter
-        word_counts = Counter(word_list)
-        idx2word = self.special_tokens + [word for word, _ in word_counts.most_common()]
-        word2idx = {word: idx for idx, word in enumerate(idx2word)}
-        return idx2word, word2idx
+    # def build_vocab(self, word_list):
+    #     from collections import Counter
+    #     word_counts = Counter(word_list)
+    #     idx2word = self.special_tokens + [word for word, _ in word_counts.most_common()]
+    #     word2idx = {word: idx for idx, word in enumerate(idx2word)}
+    #     return idx2word, word2idx
 
-    def build_vocab_by_patdata(self, vocab_path):
-        for file in self.train_path:
-            with open(os.path.join(raw_path, file), encoding='utf-8') as f:  # 일단 읽어서 길이는 알아둔다.
-                data = f.readlines()
-                # data_length = len(f.readlines())
-                data_length = len(data)
-                print(data_length)
-                print(data[0])
-                # id_kipi, pd, cpc, title, ab, cl = f.read()
-                print(data[0]["title"])
-                tokenized_title = [data['title'].split()]
-                idx2word, word2idx = self.build_vocab(tokenized_title)
-                vocab = (idx2word, word2idx)
-                pickle.dump(vocab, open(vocab_path, 'wb'))
+    def build_vocab_by_patent(self, vocab_path):
+
+        error_cnt = 0
+        for file in self.train_path[:2]:
+            word_list = []
+            with open(os.path.join(raw_path, file), encoding='utf-8') as f:
+                for line in tqdm(f):
+                    # print('line: ', line)
+                    try:
+                        # print(line)
+                        patent = json.loads(line)
+                        # token = tokenizer(patent['title'])
+                        token = patent['title'].split() + patent['ab'].split()
+                        # print('token: ', token)
+                        # doc = en.tokenizer(patent['title']+patent['ab']+patent['cl'])
+                        for tok in token:
+                            word_list.append(tok)
+                    except:
+                        error_cnt += 1
+                        print('error: ', line)
+            print('\nIn "%s" word_list: %d, error_cnt: %d\n' % (file, len(word_list), error_cnt))
+            # idx2word, word2idx = self.build_freq(word_list)
+            self.build_freq(word_list)
+
+        # idx2word, word2idx = self.build_vocab(word_list)
+
+        # vocab = (idx2word, word2idx)
+        # pickle.dump(vocab, open(vocab_path, 'wb'))
+
+    # def build_vocab_by_patdata(self, vocab_path):
+    #     for file in self.train_path:
+    #         print('current file: ', file)
+    #         with open(os.path.join(raw_path, file), encoding='utf-8') as f:  # 일단 읽어서 길이는 알아둔다.
+    #             # data_length = len(f.readlines())
+    #             # print(data_length)
+    #             # for patent in patents:
+    #             #     print(patent)
+    #             #     # id_kipi, pd, cpc, title, ab, cl = f.read()
+    #             #     print(patent('title'))
+    #             #     tokenized_title = [patent['title'].split()]
+    #             #     idx2word, word2idx = self.build_vocab(tokenized_title)
+    #             #     vocab = (idx2word, word2idx)
+    #             #     pickle.dump(vocab, open(vocab_path, 'wb'))
+    #             for line in f:
+    #                 try:
+    #                     patent = json.loads(line)
+    #                     print(patent['title'])
+    #                     tokenized_title = en.tokenizer(patent['title'])
+    #                     tokenized_ab = en.tokenizer(patent['ab'])
+    #                     tokenized_cl = en.tokenizer(patent['cl'])
+    #                     print('tokenized_title: ', tokenized_title)
+    #                     print('tokenized_ab: ', tokenized_ab)
+    #                     print('tokenized_cl: ', tokenized_cl)
+    #                     # idx2word, word2idx = self.build_vocab(tokenized_title)
+    #                     # vocab = (idx2word, word2idx)
+    #                     # pickle.dump(vocab, open(vocab_path, 'wb'))
+    #                 except:
+    #                     pass
 
     # def tokenize_by_morph(self, text):
     #     tokenized_text = []
@@ -299,7 +357,7 @@ class Dataset:
         return dataset
 
 
-vocab_path = raw_path + 'vocab.voc'
+vocab_path = os.path.join(raw_path + '/vocab.voc')
 
 dataset = Dataset(train_path=tr_file_list,
                   test_path=test_file_list,
