@@ -23,15 +23,15 @@ from tensorflow.keras import backend
 tf.compat.v1.enable_eager_execution
 
 # data_path = '../data/Raw_Claim/'
-EMB_SIZE = 300
-RNG_SEED = 100   # 어제 실험한 것과 오늘 실험한게 일관성을 가지려면 초기값 고정 필요
-BATCH_SIZE = 8
-NUM_EPOCHS = 1
+# EMB_SIZE = 300
+# RNG_SEED = 100   # 어제 실험한 것과 오늘 실험한게 일관성을 가지려면 초기값 고정 필요
+# BATCH_SIZE = 8
+# NUM_EPOCHS = 1
 
 tf.keras.backend.clear_session()
 
-max_length = 10
-TEST_SPLIT = 0.7
+# max_length = 10
+# TEST_SPLIT = 0.7
 
 raw_path = '../data/Raw_Claim'
 tr_file_list = os.listdir(raw_path)
@@ -316,6 +316,14 @@ class Dataset:
     #                                           maxlen=self.max_length,
     #                                           padding='pre')
 
+    def _create_onehot_labels(labels_index):
+        label = [0] * num_labels
+        # print(len(label))
+        for item in labels_index:
+            # print(item)
+            label[int(item)] = 1
+        return label
+
     def data_generator(self, is_train):
         if is_train:
             batch_size = self.train_bs
@@ -343,7 +351,7 @@ class Dataset:
                 if current_count >= data_length:
                     return
                 else:
-                    target_indices = indices[current_count:current_count + BATCH_SIZE]
+                    target_indices = indices[current_count:current_count + batch_size]
                     texts, labels = self.read_lines(target_indices, cur_file)
                     # tokenized_title = self.tokenize_by_morph(title)
                     tokenized_title = texts.split()
@@ -361,8 +369,8 @@ class Dataset:
         dataset = tf.data.Dataset.from_generator(generator=lambda: self.data_generator(is_train=True),
                                                  output_types=(tf.int64, tf.int64),
                                                  output_shapes=(
-                                                     (None, max_length),  # 넣어주면 graph그릴때 잘못 들어온 입력을 잡아줄 수 있다.
-                                                     (None, max_length)))  # 마지막 배치는 몇개가 남을지 모르니까.
+                                                     (None, self.max_length),  # 넣어주면 graph그릴때 잘못 들어온 입력을 잡아줄 수 있다.
+                                                     (None, None)))  # labels count: unknown
         # id_kipi, pd, cpc, title, ab, cl
         dataset = dataset.map(self.mapping_fn)
         dataset = dataset.repeat(count=self.epoch)
@@ -372,7 +380,7 @@ class Dataset:
         dataset = tf.data.Dataset.from_generator(generator=lambda: self.data_generator(is_train=False),
                                                  output_types=(tf.int64, tf.int64),
                                                  output_shapes=((None, self.max_length),
-                                                                (None, self.max_length)))
+                                                                (None, None)))
         dataset = dataset.map(self.mapping_fn)
         return dataset
 
@@ -440,35 +448,35 @@ def model_fn(features, labels, mode, params):
     # logits = tf.keras.layers.Dense(units=1)(dropout_hidden)  # sigmoid를 해주겠다  # (bs, 1)
     logits = tf.keras.layers.Dense(units=params['label_size'])(dropout_hidden)  # 이렇게하면 one-hot 필요
 
-    # if labels is not None:
-    #     # labels = tf.reshape(labels, [-1, 1])  # (bs, 1)
-    #     print('labels: ', labels)
-    #     labels = tf.one_hot(indices=labels, depth=9)  # (bs, 2)
-    #     print('labels one_hot: ', labels)
-    #
-    # if TRAIN:
-    #     global_step = tf.train.get_global_step()
-    #     # loss = tf.losses.sigmoid_cross_entropy(labels, logits)
-    #     loss = tf.losses.softmax_cross_entropy(labels, logits)
-    #
-    #     train_op = tf.train.AdamOptimizer(0.001).minimize(loss, global_step)
-    #
-    #     return tf.estimator.EstimatorSpec(mode=mode, train_op=train_op, loss=loss)
-    #
-    # elif EVAL:
-    #     loss = tf.losses.sigmoid_cross_entropy(labels, logits)
-    #     pred = tf.nn.sigmoid(logits)
-    #     accuracy = tf.metrics.accuracy(labels, tf.round(pred))
-    #     return tf.estimator.EstimatorSpec(mode=mode, loss=loss, eval_metric_ops={'acc': accuracy})
-    #
-    # elif PREDICT:
-    #     return tf.estimator.EstimatorSpec(
-    #         mode=mode,
-    #         predictions={
-    #             'prob': tf.nn.sigmoid(logits),
-    #         }
-    #     )
-    # # plot_model(model, to_file='model.png')
+    if labels is not None:
+        # labels = tf.reshape(labels, [-1, 1])  # (bs, 1)
+        print('labels: ', labels)
+        labels = tf.one_hot(indices=labels, depth=9)  # (bs, 2)
+        print('labels one_hot: ', labels)
+
+    if TRAIN:
+        global_step = tf.train.get_global_step()
+        # loss = tf.losses.sigmoid_cross_entropy(labels, logits)
+        loss = tf.losses.softmax_cross_entropy(labels, logits)
+
+        train_op = tf.train.AdamOptimizer(0.001).minimize(loss, global_step)
+
+        return tf.estimator.EstimatorSpec(mode=mode, train_op=train_op, loss=loss)
+
+    elif EVAL:
+        loss = tf.losses.sigmoid_cross_entropy(labels, logits)
+        pred = tf.nn.sigmoid(logits)
+        accuracy = tf.metrics.accuracy(labels, tf.round(pred))
+        return tf.estimator.EstimatorSpec(mode=mode, loss=loss, eval_metric_ops={'acc': accuracy})
+
+    elif PREDICT:
+        return tf.estimator.EstimatorSpec(
+            mode=mode,
+            predictions={
+                'prob': tf.nn.sigmoid(logits),
+            }
+        )
+    # plot_model(model, to_file='model.png')
 
     return tf.estimator.EstimatorSpec(
                         mode=mode,
