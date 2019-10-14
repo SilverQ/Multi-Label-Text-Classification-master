@@ -316,14 +316,6 @@ class Dataset:
     #                                           maxlen=self.max_length,
     #                                           padding='pre')
 
-    def _create_onehot_labels(labels_index):
-        label = [0] * num_labels
-        # print(len(label))
-        for item in labels_index:
-            # print(item)
-            label[int(item)] = 1
-        return label
-
     def data_generator(self, is_train):
         if is_train:
             batch_size = self.train_bs
@@ -448,10 +440,19 @@ def model_fn(features, labels, mode, params):
     # logits = tf.keras.layers.Dense(units=1)(dropout_hidden)  # sigmoid를 해주겠다  # (bs, 1)
     logits = tf.keras.layers.Dense(units=params['label_size'])(dropout_hidden)  # 이렇게하면 one-hot 필요
 
+    def _create_onehot_labels(labels_index):
+        label = [0.1] * params['label_size']
+        # print(len(label))
+        for item in labels_index:
+            # print(item)
+            label[int(item)] = 1
+        return label
+
     if labels is not None:
         # labels = tf.reshape(labels, [-1, 1])  # (bs, 1)
         print('labels: ', labels)
-        labels = tf.one_hot(indices=labels, depth=9)  # (bs, 2)
+        # labels = tf.one_hot(indices=labels, depth=params['label_size'])  # (bs, 2)
+        labels = _create_onehot_labels(labels)
         print('labels one_hot: ', labels)
 
     if TRAIN:
