@@ -368,7 +368,7 @@ def model_fn(features, labels, mode, params):
     logits = tf.keras.layers.Dense(units=params['label_size'])(dropout_hidden)  # 이렇게하면 one-hot 필요
 
     def _create_onehot_labels(labels_index):
-        label = [0.1] * params['label_size']
+        label = [0] * params['label_size']
         # print(len(label))
         for item in labels_index:
             # print(item)
@@ -379,21 +379,23 @@ def model_fn(features, labels, mode, params):
     if labels is not None:
         # labels = tf.reshape(labels, [-1, 1])  # (bs, 1)
         print('labels: ', labels)
-        labels = tf.one_hot(indices=labels, depth=params['label_size'])  # (bs, 2)
-        # labels = _create_onehot_labels(labels)
+        # labels = tf.one_hot(indices=labels, depth=params['label_size'])  # (bs, 2)
+        labels = _create_onehot_labels(labels)
         print('labels one_hot: ', labels)
 
     if TRAIN:
         global_step = tf.train.get_global_step()
-        # loss = tf.losses.sigmoid_cross_entropy(labels, logits)
-        loss = tf.losses.softmax_cross_entropy(labels, logits)
+        loss = tf.losses.sigmoid_cross_entropy(labels, logits,
+                                               weights=1.0, label_smoothing=0.01)
+        # loss = tf.losses.softmax_cross_entropy(labels, logits)
 
         train_op = tf.train.AdamOptimizer(0.001).minimize(loss, global_step)
 
         return tf.estimator.EstimatorSpec(mode=mode, train_op=train_op, loss=loss)
 
     elif EVAL:
-        loss = tf.losses.sigmoid_cross_entropy(labels, logits)
+        loss = tf.losses.sigmoid_cross_entropy(labels, logits,
+                                               weights=1.0, label_smoothing=0.01)
         pred = tf.nn.sigmoid(logits)
         accuracy = tf.metrics.accuracy(labels, tf.round(pred))
         return tf.estimator.EstimatorSpec(mode=mode, loss=loss, eval_metric_ops={'acc': accuracy})
