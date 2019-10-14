@@ -42,30 +42,6 @@ test_data_path = '../data/Raw_Claim/test_data'
 test_file_list = os.listdir(test_data_path)
 test_file_list = [file for file in test_file_list if file.endswith(".txt")]
 
-# print('Loading Saved Tokenizer')
-# token_file = os.path.join('../data/', 'abst_tokenizer.pickle')
-# with open(token_file, 'rb') as handle:
-#     tokenizer = pickle.load(handle)
-# VOCAB_SIZE = len(tokenizer.word_index)
-
-#
-# def read_data(file):
-#     title = []
-#     label = []
-#     raw_data = open(os.path.join('../Raw_Claim', file), encoding='utf-8')
-#     for line in raw_data:
-#         try:
-#             d = json.loads(line)    # 이 과정을 생략하면 str타입으로 읽어서 append함
-#             title.append(d['title'])
-#             label.append(label_id[d["cpc"][0].lower()])
-#         except:
-#             pass
-#     title_token = tokenizer.texts_to_sequences(title)
-#     title_token = preprocessing.sequence.pad_sequences(title_token,
-#                                                        maxlen=max_length,
-#                                                        padding='pre')  # 학습 데이터를 벡터화
-#     return label, title_token
-
 
 class Dataset:
 
@@ -80,9 +56,10 @@ class Dataset:
         # self.is_header_first = is_header_first
         # self.okt = Okt()
         self.special_tokens = ['<PAD>', '<BOS>', '<EOS>', '<UNK>']
-        # self.label_path = label_path
+        self.label_path = label_path
+        self.vocab_path = vocab_path
 
-        if not os.path.exists(vocab_path):
+        if not os.path.exists(self.vocab_path):
             print('No vocabulary.')
             print('Making vocabulary.')
             # self.build_vocab_by_patdata(vocab_path)
@@ -94,12 +71,6 @@ class Dataset:
         print('Successfully load vocabulary!')
         self.idx2label, self.label2idx = pickle.load(open(label_path, 'rb'))
         print('Successfully load labels')
-
-    # def read_patents(self, file):
-    #     with open(os.path.join(raw_path, file), encoding='utf-8') as f:
-    #         for line in f:
-    #             yield json.loads(line)
-    #         # yield json.loads()
 
     def build_freq(self, word_list):
         word_counts = Counter(word_list)
@@ -127,36 +98,10 @@ class Dataset:
     word_counts_2:  251 [('the', 53), ('a', 48), ('and', 26), ('of', 23), ('to', 19), ('first', 14), ('second', 12), ('The', 11), ('is', 10), ('shoulder', 8), ('upper', 8), ('A', 8), ('eye', 8), ('protective', 8), ('includes', 7), ('between', 6), ('end', 6), ('headgear', 6), ('segment', 6), ('hard', 5), ('scye', 5), ('bearing', 5), ('by', 5), ('an', 5), ('for', 4), ('be', 4), ('or', 4), ('having', 4), ('brim', 4), ('lower', 4), ('(18)', 4), ('assembly', 4), ('spherical', 4), ('side', 4), ('telescoping', 4), ('which', 4), ('device', 3), ('torso', 3), ('suit', 3), ('An', 3), ('adjustable', 3), ('width', 3), ('desired', 3), ('can', 3), ('position', 3), ('on', 3), ('(14)', 3), ('that', 3), ('from', 3), ('bracket', 3), ('shields', 3), ('extending', 3), ('shield', 3), ('connects', 3), ('hinge', 3), ('openings', 3), ('in', 3), ('eyewear', 3), ('via', 3), ('magnetic', 3), ('with', 3), ('member', 3), ('as', 3), ('has', 3), ('front', 3), ('insert', 3), ('cap', 3), ('flange', 3), ('cloth', 3), ('visor', 3), ('bill', 3), ('at', 2), ('torso.', 2), ('relative', 2), ('while', 2), ('protector', 2), ('(16)', 2), ('helmet', 2), ('worn', 2), ('(20)', 2), ('pair', 2), ('storage', 2), ('along', 2), ('usage', 2), ('hinges', 2), ('(22)', 2), ('one', 2), ('(24,26)', 2), ('socket', 2), ('(28)', 2), ('through', 2), ('have', 2), ('fixed', 2), ('system', 2), ('attaches', 2), ('capsule', 2), ('finger', 2), ('connector', 2), ('positioned', 2), ('wall', 2), ('garment', 2), ('such', 2), ('layer', 2), ('portions', 2), ('central', 2), ('opening', 2), ('defined', 2), ('joint', 2), ('square', 2), ('piece', 2), ('cloth.', 2), ('it', 2), ('Adjustable', 1), ('providing', 1), ('apertures.', 1), ('repositionable', 1), ('arranged', 1), ('aperture.', 1), ('interconnects', 1), ('configured', 1), ('move', 1), ('positions', 1), ('method', 1), ('donning', 1), ('steps', 1), ('adjusting', 1), ('position.', 1), ('subsequently', 1), ('repositioned', 1), ('crewmember', 1), ('fit', 1), ('use', 1), ('maintained.', 1), ('Eye', 1), ('protectors', 1), ('provided', 1), ('mounting', 1), ('(10)', 1), ('type', 1), ('firefighter', 1), ('other', 1), ('emergency', 1), ('worker,', 1), ('projects', 1), ('forwardly', 1), ('laterally', 1), ('part', 1), ('crown', 1), ('(12).', 1), ('mounted', 1), ('(14),', 1), ('movable', 1), ('downward', 1), ('eyes', 1), ('wearer,', 1), ('connect', 1), ('movement', 1), ('positions.', 1), ('Each', 1), ('corresponding', 1), ('plurality', 1), ('aligned', 1), ('(20),', 1), ('(18),', 1), ('pin', 1), ('(30)', 1), ('(32)', 1), ('releasably', 1), ('(34)', 1), ('exposed', 1), ('outside', 1), ('(24,26).', 1), ('Combination', 1), ('protection', 1), ('combination', 1), ('connectors.', 1), ('headrest', 1), ('ends.', 1), ('wall,', 1), ('wall.', 1), ('vision', 1), ('blade', 1), ('attaching', 1), ('member.', 1), ('capsule,', 1), ('capsule.', 1), ('Garment', 1), ('shirt', 1), ('pants', 1), ('define', 1), ('inner', 1), ('periphery', 1), ('positionable', 1), ('overlie', 1), ('portion', 1), ('protected', 1), ('knee', 1), ('elbow.', 1), ('removable', 1), ('larger', 1), ('than', 1), ('unitary', 1), ('sewn', 1), ('thereto.', 1), ('separated', 1), ('bending', 1), ('least', 1), ('groove', 1), ('extends', 1), ('substantially', 1), ('across', 1), ('cap.', 1), ('are', 1), ('separately', 1), ('stitching.', 1), ('outwardly', 1), ('projecting', 1), ('overlies', 1), ('insert,', 1), ('engage', 1), ('insert.', 1), ('slot', 1), ('ventilates', 1), ('layer.', 1), ('Visored', 1), ('item', 1), ('comprised', 1), ('attached', 1), ('diagonal', 1), ('slightly', 1), ('below', 1), ('center', 1), ('encased', 1), ('pocket-shaped', 1), ('cover', 1), ('before', 1), ('stitched', 1), ('present', 1), ('invention', 1), ('visor,', 1), ('opened', 1), ('up', 1), ('wrapped', 1), ('over', 1), ('top', 1), ('head', 1), ('form', 1), ('shape', 1), ('more', 1), ('traditional', 1), ('hat.', 1)]
     """
 
-    # def build_vocab(self, word_list):
-    #     from collections import Counter
-    #     word_counts = Counter(word_list)
-    #     idx2word = self.special_tokens + [word for word, _ in word_counts.most_common()]
-    #     word2idx = {word: idx for idx, word in enumerate(idx2word)}
-    #     return idx2word, word2idx
-    #
-    # def build_labels(self, label_list):
-    #     label_file = raw_path + '/labels.pickle'
-    #     if os.path.exists(label_file):
-    #         with open(label_file, 'rb') as label_f:
-    #             labels = pickle.load(label_f)
-    #             print('saved label loaded', len(labels), labels)
-    #     else:
-    #         labels = []
-    #
-    #     for label in label_list:
-    #         if label not in labels:
-    #             labels.append(label)
-    #             need_save = True
-    #     print('labels: ', len(labels), labels)
-    #     if need_save:
-    #         with open(label_file, 'wb') as label_f:
-    #             pickle.dump(label_file, label_f)
-    #     return labels
-
     def build_vocab_by_patent(self, vocab_path):
         error_cnt = 0
         label_list = []
-        for file in self.train_path[:2]:
+        for file in self.train_path:
             word_list = []
             with open(os.path.join(raw_path, file), encoding='utf-8') as f:
                 for line in tqdm(f):
@@ -192,6 +137,38 @@ class Dataset:
         label = (label_list, label2idx)
         pickle.dump(vocab, open(vocab_path, 'wb'))
         pickle.dump(label, open(self.label_path, 'wb'))
+
+    # def build_vocab(self, word_list):
+    #     from collections import Counter
+    #     word_counts = Counter(word_list)
+    #     idx2word = self.special_tokens + [word for word, _ in word_counts.most_common()]
+    #     word2idx = {word: idx for idx, word in enumerate(idx2word)}
+    #     return idx2word, word2idx
+
+    # def build_labels(self, label_list):
+    #     label_file = raw_path + '/labels.pickle'
+    #     if os.path.exists(label_file):
+    #         with open(label_file, 'rb') as label_f:
+    #             labels = pickle.load(label_f)
+    #             print('saved label loaded', len(labels), labels)
+    #     else:
+    #         labels = []
+    #
+    #     for label in label_list:
+    #         if label not in labels:
+    #             labels.append(label)
+    #             need_save = True
+    #     print('labels: ', len(labels), labels)
+    #     if need_save:
+    #         with open(label_file, 'wb') as label_f:
+    #             pickle.dump(label_file, label_f)
+    #     return labels
+
+    # def read_patents(self, file):
+    #     with open(os.path.join(raw_path, file), encoding='utf-8') as f:
+    #         for line in f:
+    #             yield json.loads(line)
+    #         # yield json.loads()
 
     # def build_vocab_by_patdata(self, vocab_path):
     #     for file in self.train_path:
@@ -265,56 +242,6 @@ class Dataset:
                         print(line_count)
                 line_count += 1
         return texts, labels
-
-    # def data_generator(self, is_train):
-    #
-    #     if is_train:
-    #         batch_size = self.train_bs
-    #         is_shuffle = self.is_shuffle  # 셔플을 여기서 해줘야해. 밖에서는 느려
-    #         path = self.train_path
-    #     else:
-    #         batch_size = self.test_bs
-    #         is_shuffle = False
-    #         path = self.test_path
-    #
-    #     with open(path, 'r') as f:  # 일단 읽어서 길이는 알아둔다.
-    #         if self.is_header_first:
-    #             data_length = len(f.readlines()) - 1  # pandas는 느려서 기본 io를 쓴다;.
-    #         else:
-    #             data_length = len(f.readlines())
-    #
-    #     indices = list(range(data_length))  # 인덱스를 미리 만들어주는게 제너레이터 사용의 핵심.
-    #     if is_shuffle:
-    #         shuffle(indices)  # 셔플할꺼라면 이걸... 내장 라이브러리 random에 있는 함수.
-    #
-    #     current_count = 0
-    #     while True:
-    #         if current_count >= data_length:
-    #             return
-    #         else:
-    #             target_indices = indices[current_count:current_count + batch_size]
-    #             questions, answers = self.read_lines(target_indices, path)
-    #
-    #             tokenized_questions = self.tokenize_by_morph(questions)
-    #             tokenized_answers = self.tokenize_by_morph(answers)
-    #
-    #             tokenized_encoder_inputs = tokenized_questions  # teacher forcing을 써보자
-    #             tokenized_decoder_inputs, tokenized_labels = self.make_decoder_input_and_label(tokenized_answers)
-    #
-    #             indexed_encoder_inputs = self.text_to_sequence(tokenized_encoder_inputs)
-    #             indexed_decoder_inputs = self.text_to_sequence(tokenized_decoder_inputs)
-    #             indexed_labels = self.text_to_sequence(tokenized_labels)
-    #
-    #             padded_encoder_inputs = pad_sequences(indexed_encoder_inputs,
-    #                                                   maxlen=self.max_length,
-    #                                                   padding='pre')
-    #             padded_decoder_inputs = pad_sequences(indexed_decoder_inputs,
-    #                                                   maxlen=self.max_length,
-    #                                                   padding='pre')
-    #
-    #             padded_labels = pad_sequences(indexed_labels,
-    #                                           maxlen=self.max_length,
-    #                                           padding='pre')
 
     def data_generator(self, is_train):
         if is_train:
@@ -446,13 +373,14 @@ def model_fn(features, labels, mode, params):
         for item in labels_index:
             # print(item)
             label[int(item)] = 1
+        print('label_repr: ', label)
         return label
 
     if labels is not None:
         # labels = tf.reshape(labels, [-1, 1])  # (bs, 1)
         print('labels: ', labels)
-        # labels = tf.one_hot(indices=labels, depth=params['label_size'])  # (bs, 2)
-        labels = _create_onehot_labels(labels)
+        labels = tf.one_hot(indices=labels, depth=params['label_size'])  # (bs, 2)
+        # labels = _create_onehot_labels(labels)
         print('labels one_hot: ', labels)
 
     if TRAIN:
@@ -491,8 +419,8 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
 hyper_params = {'vocab_size': len(dataset.word2idx),
                 'label_size': len(dataset.label2idx),
                 'embedding_dimension': 128,
-                'gru_dimension': 128,
-                'attention_dimension': 256,
+                # 'gru_dimension': 128,
+                # 'attention_dimension': 256,
                 # 'start_token_index': dataset.word2idx['<BOS>'],
                 'max_length': 30,
                 'teacher_forcing_rate': 0.5,
