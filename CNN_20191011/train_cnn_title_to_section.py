@@ -3,19 +3,18 @@ import tensorflow as tf
 import os
 import pickle
 import json
-import numpy as np
 from tqdm import tqdm
 from random import shuffle
-from tensorflow.keras import preprocessing
-from sklearn.model_selection import train_test_split
-from tensorflow.keras.utils import plot_model
-from tensorflow.keras import backend
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from collections import Counter
+import re
+import numpy as np
+from tensorflow.keras import preprocessing
+from tensorflow.keras.utils import plot_model
+from tensorflow.keras import backend
 # import spacy
 # from spacy.tokenizer import Tokenizer
 # from spacy.lang.en import English
-import re
 # nlp = English()
 # tokenizer = nlp.Defaults.create_tokenizer(nlp)
 # en = spacy.load('en_core_web_sm')
@@ -28,8 +27,6 @@ EMB_SIZE = 300
 RNG_SEED = 100   # 어제 실험한 것과 오늘 실험한게 일관성을 가지려면 초기값 고정 필요
 BATCH_SIZE = 8
 NUM_EPOCHS = 1
-label_id = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'Y': 8}
-id_label = {i: l for l, i in label_id.items()}
 
 tf.keras.backend.clear_session()
 
@@ -72,7 +69,7 @@ test_file_list = [file for file in test_file_list if file.endswith(".txt")]
 
 class Dataset:
 
-    def __init__(self, train_path, test_path, is_shuffle, train_bs, test_bs, epoch, max_length, vocab_path):
+    def __init__(self, train_path, test_path, is_shuffle, train_bs, test_bs, epoch, max_length, vocab_path, label_path):
         self.train_path = train_path
         self.test_path = test_path
         self.is_shuffle = is_shuffle
@@ -83,6 +80,7 @@ class Dataset:
         # self.is_header_first = is_header_first
         # self.okt = Okt()
         self.special_tokens = ['<PAD>', '<BOS>', '<EOS>', '<UNK>']
+        # self.label_path = label_path
 
         if not os.path.exists(vocab_path):
             print('No vocabulary.')
@@ -91,9 +89,11 @@ class Dataset:
             self.build_vocab_by_patent(vocab_path)
             print('Complete build vocabulary!')
 
-        print('Loading vocabulary...')
+        # print('Loading vocabulary...')
         self.idx2word, self.word2idx = pickle.load(open(vocab_path, 'rb'))
         print('Successfully load vocabulary!')
+        self.idx2label, self.label2idx = pickle.load(open(label_path, 'rb'))
+        print('Successfully load labels')
 
     # def read_patents(self, file):
     #     with open(os.path.join(raw_path, file), encoding='utf-8') as f:
@@ -133,9 +133,29 @@ class Dataset:
     #     idx2word = self.special_tokens + [word for word, _ in word_counts.most_common()]
     #     word2idx = {word: idx for idx, word in enumerate(idx2word)}
     #     return idx2word, word2idx
+    #
+    # def build_labels(self, label_list):
+    #     label_file = raw_path + '/labels.pickle'
+    #     if os.path.exists(label_file):
+    #         with open(label_file, 'rb') as label_f:
+    #             labels = pickle.load(label_f)
+    #             print('saved label loaded', len(labels), labels)
+    #     else:
+    #         labels = []
+    #
+    #     for label in label_list:
+    #         if label not in labels:
+    #             labels.append(label)
+    #             need_save = True
+    #     print('labels: ', len(labels), labels)
+    #     if need_save:
+    #         with open(label_file, 'wb') as label_f:
+    #             pickle.dump(label_file, label_f)
+    #     return labels
 
     def build_vocab_by_patent(self, vocab_path):
         error_cnt = 0
+        label_list = []
         for file in self.train_path[:2]:
             word_list = []
             with open(os.path.join(raw_path, file), encoding='utf-8') as f:
@@ -144,24 +164,34 @@ class Dataset:
                         # print('line: ', line)
                         patent = json.loads(line)
                         text = re.sub('[-=.#/?:$}(){,]', ' ', patent['title'] + patent['ab'])
-                        # token = tokenizer(patent['title'])
                         token = text.split()
+                        # token = tokenizer(patent['title'])
                         # print('token: ', token)
                         # doc = en.tokenizer(patent['title']+patent['ab']+patent['cl'])
+                        labels = patent['cpc'].split('|')
                         for tok in token:
                             word_list.append(tok.lower())
+                        labels = [label[0] for label in labels]
+                        for label in labels:
+                            if label not in label_list:
+                                label_list.append(label)
                     except:
                         error_cnt += 1
-                        print('error: ', line)
+                        # print('error: ', line)
             print('\nIn "%s" word_list: %d, error_cnt: %d\n' % (file, len(word_list), error_cnt))
             # idx2word, word2idx = self.build_freq(word_list)
             idx2word = self.build_freq(word_list)
-            print('idx2word: ', idx2word)
+            # idx2label = self.build_labels(label_list)
+            # print('idx2word: ', len(idx2word), idx2word[:10])
         idx2word = self.special_tokens + [word for word, _ in idx2word.most_common()]
-        print('idx2word: ', idx2word)
+        print('idx2word: ', len(idx2word), idx2word[:10])
+        print('idx2label: ', len(label_list), label_list)
         word2idx = {word: idx for idx, word in enumerate(idx2word)}
+        label2idx = {label: idx for idx, label in enumerate(label_list)}
         vocab = (idx2word, word2idx)
+        label = (label_list, label2idx)
         pickle.dump(vocab, open(vocab_path, 'wb'))
+        pickle.dump(label, open(self.label_path, 'wb'))
 
     # def build_vocab_by_patdata(self, vocab_path):
     #     for file in self.train_path:
@@ -218,22 +248,23 @@ class Dataset:
 
     def read_lines(self, indices, path):
         line_count = 0
-        questions = []
-        answers = []
+        texts = []
+        labels = []
 
-        with open(path, 'r') as f:
-            for line in f.readlines():
+        with open(path, encoding='utf-8') as f:
+            for line in f:
                 if line_count in indices:
                     try:
-                        question, answer, _ = next(csv.reader([line], skipinitialspace=True))
-                        questions.append(question)
-                        answers.append(answer)
+                        patent = json.loads(line)
+                        text = re.sub('[-=.#/?:$}(){,]', ' ', patent['title'] + patent['ab'])
+                        labels = patent['cpc'].split('|')
+                        texts.append(text.lower())
+                        labels.append([label[0] for label in labels])
                     except:
                         print(line)
                         print(line_count)
                 line_count += 1
-
-        return questions, answers
+        return texts, labels
 
     # def data_generator(self, is_train):
     #
@@ -298,7 +329,8 @@ class Dataset:
             # path = self.test_path
 
         for file in shuffle(file_list):
-            with open(os.path.join('../Raw_Claim', file), encoding='utf-8') as f:  # 일단 읽어서 길이는 알아둔다.
+            cur_file = os.path.join('../Raw_Claim', file)
+            with open(cur_file, encoding='utf-8') as f:  # 일단 읽어서 길이는 알아둔다.
                 data_length = len(f.readlines())
                 print('Num of pat: ', data_length)
 
@@ -312,25 +344,17 @@ class Dataset:
                     return
                 else:
                     target_indices = indices[current_count:current_count + BATCH_SIZE]
-                    id_kipi, pd, cpc, title, ab, cl = f.read_lines(target_indices)
+                    texts, labels = self.read_lines(target_indices, cur_file)
                     # tokenized_title = self.tokenize_by_morph(title)
-                    tokenized_title = title.split()
-                    # tokenized_abst = ab.split()
-                    # tokenized_claim = cl.split()
+                    tokenized_title = texts.split()
                     indexed_encoder_inputs = self.text_to_sequence(tokenized_title)
                     padded_encoder_inputs = pad_sequences(indexed_encoder_inputs,
                                                           maxlen=self.max_length,
                                                           padding='pre')
-                    # yield title, ab, cl, cpc
-                    yield title, cpc
+                    yield padded_encoder_inputs, labels
 
-    # def mapping_fn(self, question, answer, labels=None):  # test시에는 라벨이 안들어오니까 default를 설정해주자
-    #     features = {"question": question, 'answer': answer}
-    #
-    #     return features, labels
-
-    def mapping_fn(self, title, labels=None):
-        inputs, label = {'title': title}, labels
+    def mapping_fn(self, x, y=None):
+        inputs, label = {'x': x}, y
         return inputs, label
 
     def train_input_fn(self):
@@ -352,8 +376,14 @@ class Dataset:
         dataset = dataset.map(self.mapping_fn)
         return dataset
 
+    def eval_input_fn(self):
+        dataset = tf.data.Dataset.from_generator(generator=lambda: self.data_generator(is_train=False))
+        dataset = dataset.map(self.mapping_fn)
+        return dataset
+
 
 vocab_path = os.path.join(raw_path + '/vocab.voc')
+label_file = raw_path + '/labels.pickle'
 
 dataset = Dataset(train_path=tr_file_list,
                   test_path=test_file_list,
@@ -363,17 +393,12 @@ dataset = Dataset(train_path=tr_file_list,
                   epoch=10,
                   max_length=30,
                   vocab_path=vocab_path,
+                  label_path=label_file
                   # is_header_first=True
                   )
 
 # vocab_size = len(dataset.word2idx)
 # print('vocab_size: ', vocab_size)
-
-
-def eval_input_fn():
-    dataset = tf.data.Dataset.from_generator(generator=lambda: data_generator(is_train=False))
-    dataset = dataset.map(mapping_fn)
-    return dataset
 
 
 def model_fn(features, labels, mode, params):
@@ -382,7 +407,9 @@ def model_fn(features, labels, mode, params):
     PREDICT = mode == tf.estimator.ModeKeys.PREDICT
     # feature['x'] => (bs, 20)
 
-    print(features, labels)
+    print('features: ', features)
+    print('labels: ', labels)
+
     train_op = features
     loss = features
     predicted_token = features
@@ -411,7 +438,7 @@ def model_fn(features, labels, mode, params):
                                    kernel_constraint=tf.keras.constraints.max_norm(3.))(h_pool)  # (bs, 200)
     dropout_hidden = tf.keras.layers.Dropout(rate=0.5)(hidden, training=TRAIN)
     # logits = tf.keras.layers.Dense(units=1)(dropout_hidden)  # sigmoid를 해주겠다  # (bs, 1)
-    logits = tf.keras.layers.Dense(units=9)(dropout_hidden)  # 이렇게하면 one-hot 필요
+    logits = tf.keras.layers.Dense(units=params['label_size'])(dropout_hidden)  # 이렇게하면 one-hot 필요
 
     # if labels is not None:
     #     # labels = tf.reshape(labels, [-1, 1])  # (bs, 1)
@@ -453,6 +480,7 @@ def model_fn(features, labels, mode, params):
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
 
 hyper_params = {'vocab_size': len(dataset.word2idx),
+                'label_size': len(dataset.label2idx),
                 'embedding_dimension': 128,
                 'gru_dimension': 128,
                 'attention_dimension': 256,
