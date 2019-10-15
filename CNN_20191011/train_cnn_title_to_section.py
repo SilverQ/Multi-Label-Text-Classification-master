@@ -6,6 +6,7 @@ import json
 from tqdm import tqdm
 from random import shuffle
 from tensorflow.keras.preprocessing.sequence import pad_sequences
+import tensorflow.keras.backend as K
 from collections import Counter
 import re
 import numpy as np
@@ -234,14 +235,29 @@ class Dataset:
                     try:
                         patent = json.loads(line)
                         text = re.sub('[-=.#/?:$}(){,]', ' ', patent['title'] + patent['ab'])
-                        labels = patent['cpc'].split('|')
-                        texts.append(text.lower())
-                        labels.append([label[0] for label in labels])
+                        label = patent['cpc'].split('|')
+                        texts.append(text.lower().split())
+                        labels.append(list(set([cpc[0] for cpc in label])))
                     except:
                         print(line)
                         print(line_count)
                 line_count += 1
+        # print('texts: \n', len(texts), texts[:5])
+        # print('\nlabels: \n', len(labels), labels)
+        # print('\n')
         return texts, labels
+
+    def create_multiplehot_labels(self, labels_index):
+        labels = []
+        # print(len(label))
+        for batch in labels_index:
+            label = [0] * len(self.label2idx)
+            # print(item)
+            for cpc in batch:
+                label[self.label2idx[cpc]] = 1
+            labels.append(label)
+        # print('label_repr: ', labels)
+        return labels
 
     def data_generator(self, is_train):
         if is_train:
@@ -255,11 +271,14 @@ class Dataset:
             file_list = test_file_list
             # path = self.test_path
 
-        for file in shuffle(file_list):
-            cur_file = os.path.join('../Raw_Claim', file)
+        # file_list = [file for file in file_list if file.endswith("docs.txt")]
+        # print(file_list)
+        # for file in tqdm(shuffle(file_list)):
+        for file in tqdm(file_list):
+            cur_file = os.path.join(raw_path, file)
             with open(cur_file, encoding='utf-8') as f:  # 일단 읽어서 길이는 알아둔다.
                 data_length = len(f.readlines())
-                print('Num of pat: ', data_length)
+                # print('Num of pat: ', data_length)
 
             indices = list(range(data_length))  # 인덱스를 미리 만들어주는게 제너레이터 사용의 핵심.
             if is_shuffle:
@@ -273,7 +292,9 @@ class Dataset:
                     target_indices = indices[current_count:current_count + batch_size]
                     texts, labels = self.read_lines(target_indices, cur_file)
                     # tokenized_title = self.tokenize_by_morph(title)
-                    tokenized_title = texts.split()
+                    # tokenized_title = texts.split()
+                    tokenized_title = texts
+                    labels = self.create_multiplehot_labels(labels)
                     indexed_encoder_inputs = self.text_to_sequence(tokenized_title)
                     padded_encoder_inputs = pad_sequences(indexed_encoder_inputs,
                                                           maxlen=self.max_length,
@@ -291,6 +312,9 @@ class Dataset:
                                                      (None, self.max_length),  # 넣어주면 graph그릴때 잘못 들어온 입력을 잡아줄 수 있다.
                                                      (None, None)))  # labels count: unknown
         # id_kipi, pd, cpc, title, ab, cl
+        # for text, label in dataset.take(2):
+        #     text = _print_function(text)
+        #     print('value: ', text, label)
         dataset = dataset.map(self.mapping_fn)
         dataset = dataset.repeat(count=self.epoch)
         return dataset
@@ -315,7 +339,7 @@ label_file = raw_path + '/labels.pickle'
 dataset = Dataset(train_path=tr_file_list,
                   test_path=test_file_list,
                   is_shuffle=True,
-                  train_bs=64,
+                  train_bs=16,
                   test_bs=128,
                   epoch=10,
                   max_length=30,
@@ -334,14 +358,22 @@ def model_fn(features, labels, mode, params):
     PREDICT = mode == tf.estimator.ModeKeys.PREDICT
     # feature['x'] => (bs, 20)
 
+    """
     print('features: ', features)
     print('labels: ', labels)
-
+    features:  {'x': <tf.Tensor 'IteratorGetNext:0' shape=(?, 30) dtype=int64>}
+    labels:  Tensor("IteratorGetNext:1", shape=(?, ?), dtype=int64)
+    """
     train_op = features
     loss = features
     predicted_token = features
     embedding_layer = tf.keras.layers.Embedding(params['vocab_size'],
                                                 params['embedding_dimension'])(features['x'])  # (bs, 20, EMD_SIZE)
+
+    # K.print_tensor(embedding_layer, message='Embedding Layer')
+    # embedding = K.print_tensor(embedding_layer, message='Embedding Layer')
+    # print('embedding: ', embedding)
+    # embedding:  Tensor("Identity:0", shape=(?, 30, 128), dtype=float32)
 
     dropout_emb = tf.keras.layers.Dropout(rate=0.5)(embedding_layer)  # (bs, 20, EMD_SIZE)
 
@@ -367,26 +399,17 @@ def model_fn(features, labels, mode, params):
     # logits = tf.keras.layers.Dense(units=1)(dropout_hidden)  # sigmoid를 해주겠다  # (bs, 1)
     logits = tf.keras.layers.Dense(units=params['label_size'])(dropout_hidden)  # 이렇게하면 one-hot 필요
 
-    def _create_onehot_labels(labels_index):
-        label = [0] * params['label_size']
-        # print(len(label))
-        for item in labels_index:
-            # print(item)
-            label[int(item)] = 1
-        print('label_repr: ', label)
-        return label
-
-    if labels is not None:
-        # labels = tf.reshape(labels, [-1, 1])  # (bs, 1)
-        print('labels: ', labels)
-        # labels = tf.one_hot(indices=labels, depth=params['label_size'])  # (bs, 2)
-        labels = _create_onehot_labels(labels)
-        print('labels one_hot: ', labels)
+    # if labels is not None:
+    #     # labels = tf.reshape(labels, [-1, 1])  # (bs, 1)
+    #     print('labels: ', labels)
+    #     labels = tf.one_hot(indices=labels, depth=params['label_size'])  # (bs, 2)
+    #     print('labels one_hot: ', labels)
 
     if TRAIN:
         global_step = tf.train.get_global_step()
         loss = tf.losses.sigmoid_cross_entropy(labels, logits,
-                                               weights=1.0, label_smoothing=0.01)
+                                               # weights=1.0, label_smoothing=0.01
+                                               )
         # loss = tf.losses.softmax_cross_entropy(labels, logits)
 
         train_op = tf.train.AdamOptimizer(0.001).minimize(loss, global_step)
@@ -410,10 +433,10 @@ def model_fn(features, labels, mode, params):
     # plot_model(model, to_file='model.png')
 
     return tf.estimator.EstimatorSpec(
-                        mode=mode,
-                        train_op=train_op,
-                        loss=loss,
-                        predictions={'prediction': predicted_token})
+        mode=mode,
+        train_op=train_op,
+        loss=loss,
+        predictions={'prediction': predicted_token})
 
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
