@@ -268,7 +268,7 @@ class Dataset:
         else:
             batch_size = self.test_bs
             is_shuffle = False
-            file_list = test_file_list
+            file_list = ['test_data/' + file for file in test_file_list]
             # path = self.test_path
 
         # file_list = [file for file in file_list if file.endswith("docs.txt")]
@@ -328,7 +328,10 @@ class Dataset:
         return dataset
 
     def eval_input_fn(self):
-        dataset = tf.data.Dataset.from_generator(generator=lambda: self.data_generator(is_train=False))
+        dataset = tf.data.Dataset.from_generator(generator=lambda: self.data_generator(is_train=False),
+                                                 output_types=(tf.int64, tf.int64),
+                                                 output_shapes=((None, self.max_length), (None, None)))
+        # dataset = tf.data.Dataset.from_generator(generator=lambda: self.data_generator(is_train=False))
         dataset = dataset.map(self.mapping_fn)
         return dataset
 
@@ -456,5 +459,7 @@ est = tf.estimator.Estimator(model_fn=model_fn,
                              params=hyper_params,
                              model_dir="abst_to_section/checkpoint")
 
-est.train(dataset.train_input_fn)
+# est.train(dataset.train_input_fn)
 valid = est.evaluate(dataset.eval_input_fn)
+pred_results = est.predict(input_fn=dataset.eval_input_fn)
+print(pred_results)
