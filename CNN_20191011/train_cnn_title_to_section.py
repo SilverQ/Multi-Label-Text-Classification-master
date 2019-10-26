@@ -424,7 +424,9 @@ def model_fn(features, labels, mode, params):
                                                weights=1.0, label_smoothing=0.01)
         pred = tf.nn.sigmoid(logits)
         accuracy = tf.metrics.accuracy(labels, tf.round(pred))
-        return tf.estimator.EstimatorSpec(mode=mode, loss=loss, eval_metric_ops={'acc': accuracy})
+        top_k = tf.metrics.precision_at_top_k(labels=labels, predictions_idx=pred, k=2)
+        return tf.estimator.EstimatorSpec(mode=mode, loss=loss, eval_metric_ops={'acc': accuracy,
+                                                                                 'top-k': top_k})
 
     elif PREDICT:
         return tf.estimator.EstimatorSpec(
