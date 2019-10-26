@@ -350,14 +350,16 @@ def model_fn(features, labels, mode, params):
 tf.enable_eager_execution()
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
 
-valid = {}
+# valid = {}
 
 for line in exams:
+    valid = {}
     ld_params = json.loads(line)
-    # print(params['EXAM_NUM'], params["train_batch_size"], params["test_batch_size"], params["EPOCHS"], params["MAX_WORD_LENGTH"])
+    print('Exam No: %d\n' % ld_params['EXAM_NUM'])
+    #, params["train_batch_size"], params["test_batch_size"], params["EPOCHS"], params["MAX_WORD_LENGTH"])
     data_out_path = base_path + 'result_' + str(ld_params['EXAM_NUM']) + '/'
     tr_file_list, test_file_list = get_file_n_folder()
-    print('File List for Training: ', tr_file_list, '\n', 'File List for Testing: ', test_file_list)
+    print('\nFile List for Training: ', tr_file_list, '\n', 'File List for Testing: ', test_file_list)
 
     dataset = Dataset(train_path=tr_file_list,
                       test_path=test_file_list,
@@ -377,9 +379,17 @@ for line in exams:
                                  model_dir=data_out_path)
 
     est.train(dataset.train_input_fn)
-
     valid[ld_params['EXAM_NUM']] = est.evaluate(dataset.eval_input_fn, steps=10)
+    print(valid)
+    with open(data_out_path + str(ld_params['EXAM_NUM']) + '_' + result_file, 'w+') as res:
+        res.write(json.dumps(str(valid)))
 
-print(valid)
-with open(result_file, 'w') as res:
-    res.write(json.dumps(str(valid)))
+#     valid[ld_params['EXAM_NUM']] = est.evaluate(dataset.eval_input_fn, steps=10)
+#
+# print(valid)
+# with open(result_file, 'w+') as res:
+#     res.write(json.dumps(str(valid)))
+
+# {18: {'acc': 0.82653064, 'loss': 0.6551657, 'prec': 0.3809524, 'recall': 0.27586207, 'global_step': 2},
+#  19: {'acc': 0.72959185, 'loss': 0.6473304, 'prec': 0.21428572, 'recall': 0.31034482, 'global_step': 2},
+#  20: {'acc': 0.85714287, 'loss': 0.63348085, 'prec': 1.0, 'recall': 0.03448276, 'global_step': 2}}
