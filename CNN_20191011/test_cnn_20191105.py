@@ -1,4 +1,5 @@
 import os
+import numpy as np
 import tensorflow as tf
 import pickle
 import json
@@ -16,18 +17,18 @@ from tensorflow.keras import backend
 base_path = '../data/Raw_Claim/'
 exam_param_file = 'exam_param.txt'
 result_file = 'validation.txt'
-EXAM_NUM = '09'
-train_batch_size = 100
-test_batch_size = 100
-EPOCHS = 6
-MAX_WORD_LENGTH = 100
-EMB_DIM = 256
+# EXAM_NUM = '09'
+# train_batch_size = 100
+# test_batch_size = 100
+# EPOCHS = 6
+# MAX_WORD_LENGTH = 100
+# EMB_DIM = 256
 
 data_in_path = base_path + 'input_data/'
 test_data_path = base_path + 'test_data/'
 meta_data_path = base_path + 'meta_data/'
 vocab_file = meta_data_path + 'vocab.voc'
-label_file = meta_data_path + 'labels_subclass.pickle'
+label_file = meta_data_path + 'labels_section.pickle'
 freq_file = meta_data_path + 'word_freq.pickle'
 
 
@@ -89,7 +90,7 @@ class Dataset:
                     try:
                         patent = json.loads(line)
                         labels = patent['cpc'].split('|')
-                        labels = [label[:4] for label in labels]
+                        labels = [label[0] for label in labels]
                         for label in labels:
                             if label not in label_list:
                                 label_list.append(label)
@@ -131,7 +132,7 @@ class Dataset:
                         labels = patent['cpc'].split('|')
                         for tok in token:
                             word_list.append(tok.lower())
-                        labels = [label[:4] for label in labels]
+                        labels = [label[0] for label in labels]
                         for label in labels:
                             if label not in label_list:
                                 label_list.append(label)
@@ -170,10 +171,10 @@ class Dataset:
                     try:
                         patent = json.loads(line)
                         # text = re.sub('[-=.#/?:$}(){,]', ' ', patent['title'] + patent['ab'])
-                        text = re.sub('[-=.#/?:$}(){,]', ' ', patent['ab'])
+                        text = re.sub('[-=.#/?:$}(){,]', ' ', patent['title'])
                         label = patent['cpc'].split('|')
                         texts.append(text.lower().split())
-                        labels.append(list(set([cpc[:4] for cpc in label])))
+                        labels.append(list(set([cpc[0] for cpc in label])))
                     except:
                       pass
                 line_count += 1
@@ -273,7 +274,7 @@ def model_fn(features, labels, mode, params):
     loss = features
     predicted_token = features
     embedding_layer = tf.keras.layers.Embedding(params['vocab_size'],
-                                                params['embedding_dimension'])(features['x'])  # (bs, 20, EMD_SIZE)
+                                                params['EMB_DIM'])(features['x'])  # (bs, 20, EMD_SIZE)
 
     dropout_emb = tf.keras.layers.Dropout(rate=0.5)(embedding_layer)  # (bs, 20, EMD_SIZE)
 
@@ -352,40 +353,84 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
 
 exams = open(exam_param_file, encoding='utf-8')
 
-for line in exams:
-    valid = {}
-    ld_params = json.loads(line)
-    print('Exam No: %d\n' % ld_params['EXAM_NUM'])
-    #, params["train_batch_size"], params["test_batch_size"], params["EPOCHS"], params["MAX_WORD_LENGTH"])
-    data_out_path = base_path + 'result_' + str(ld_params['EXAM_NUM']) + '/'
-    tr_file_list, test_file_list = get_file_n_folder()
-    print('\nFile List for Training: ', tr_file_list, '\n', 'File List for Testing: ', test_file_list)
-
-    dataset = Dataset(train_path=tr_file_list,
-                      test_path=test_file_list,
-                      is_shuffle=True,
-                      train_bs=ld_params["train_batch_size"],
-                      test_bs=ld_params["test_batch_size"],
-                      epoch=ld_params["EPOCHS"],
-                      max_length=ld_params["MAX_WORD_LENGTH"])
-
-    hyper_params = {'vocab_size': len(dataset.word2idx),
-                    'label_size': len(dataset.label2idx),
-                    'embedding_dimension': EMB_DIM,
-                    'smoothing': ld_params["smoothing"]}
-
-    est = tf.estimator.Estimator(model_fn=model_fn,
-                                 params=hyper_params,
-                                 model_dir=data_out_path)
-
-    est.train(dataset.train_input_fn)
-    valid[ld_params['EXAM_NUM']] = est.evaluate(dataset.eval_input_fn, steps=10)
-    print(valid)
-    with open(data_out_path + str(ld_params['EXAM_NUM']) + '_' + result_file, 'w+') as res:
-        res.write(json.dumps(str(valid)))
-
-#     valid[ld_params['EXAM_NUM']] = est.evaluate(dataset.eval_input_fn, steps=10)
+# for line in exams:
+#     valid = {}
+#     ld_params = json.loads(line)
+#     print('Exam No: %d\n' % ld_params['EXAM_NUM'])
+#     #, params["train_batch_size"], params["test_batch_size"], params["EPOCHS"], params["MAX_WORD_LENGTH"])
+#     data_out_path = base_path + 'result_' + str(ld_params['EXAM_NUM']) + '/'
+#     tr_file_list, test_file_list = get_file_n_folder()
+#     print('\nFile List for Training: ', tr_file_list, '\n', 'File List for Testing: ', test_file_list)
 #
+#     dataset = Dataset(train_path=tr_file_list,
+#                       test_path=test_file_list,
+#                       is_shuffle=True,
+#                       train_bs=ld_params["train_batch_size"],
+#                       test_bs=ld_params["test_batch_size"],
+#                       epoch=ld_params["EPOCHS"],
+#                       max_length=ld_params["MAX_WORD_LENGTH"])
+#
+#     hyper_params = {'vocab_size': len(dataset.word2idx),
+#                     'label_size': len(dataset.label2idx),
+#                     'embedding_dimension': EMB_DIM,
+#                     'smoothing': ld_params["smoothing"]}
+#
+#     est = tf.estimator.Estimator(model_fn=model_fn,
+#                                  params=hyper_params,
+#                                  model_dir=data_out_path)
+#
+#     est.train(dataset.train_input_fn)
+#     valid[ld_params['EXAM_NUM']] = est.evaluate(dataset.eval_input_fn, steps=10)
+#     print(valid)
+#     with open(data_out_path + str(ld_params['EXAM_NUM']) + '_' + result_file, 'w+') as res:
+#         res.write(json.dumps(str(valid)))
+
+
+valid = {}
+hyper_params = {"EXAM_NUM": 59, "train_batch_size": 500, "test_batch_size": 100, "EPOCHS": 10,
+                "MAX_WORD_LENGTH": 15, "EMB_DIM": 256, "smoothing": 0.1}
+
+"""
+{"EXAM_NUM":59,"train_batch_size":500,"test_batch_size":100,"EPOCHS":10,"MAX_WORD_LENGTH":15,"EMB_DIM":256,"smoothing":0.1}
+{"EXAM_NUM":60,"train_batch_size":500,"test_batch_size":100,"EPOCHS":10,"MAX_WORD_LENGTH":15,"EMB_DIM":256,"smoothing":0.2}
+{"EXAM_NUM":61,"train_batch_size":500,"test_batch_size":100,"EPOCHS":10,"MAX_WORD_LENGTH":15,"EMB_DIM":256,"smoothing":0.3}
+{"EXAM_NUM":62,"train_batch_size":500,"test_batch_size":100,"EPOCHS":10,"MAX_WORD_LENGTH":15,"EMB_DIM":256,"smoothing":0.4}
+{"EXAM_NUM":57,"train_batch_size":500,"test_batch_size":100,"EPOCHS":10,"MAX_WORD_LENGTH":10,"EMB_DIM":256,"smoothing":0}
+{"EXAM_NUM":58,"train_batch_size":500,"test_batch_size":100,"EPOCHS":10,"MAX_WORD_LENGTH":15,"EMB_DIM":256,"smoothing":0}
+{"EXAM_NUM":55,"train_batch_size":100,"test_batch_size":100,"EPOCHS":10,"MAX_WORD_LENGTH":15,"EMB_DIM":256,"smoothing":0.3}
+{"EXAM_NUM":56,"train_batch_size":100,"test_batch_size":100,"EPOCHS":10,"MAX_WORD_LENGTH":15,"EMB_DIM":256,"smoothing":0.4}
+"""
+
+print('Exam No: %d\n' % hyper_params['EXAM_NUM'])
+# , params["train_batch_size"], params["test_batch_size"], params["EPOCHS"], params["MAX_WORD_LENGTH"])
+data_out_path = base_path + 'result_' + str(hyper_params['EXAM_NUM']) + '/'
+
+tr_file_list, test_file_list = get_file_n_folder()
+print('\nFile List for Training: ', tr_file_list, '\n', 'File List for Testing: ', test_file_list)
+
+dataset = Dataset(train_path=tr_file_list,
+                  test_path=test_file_list,
+                  is_shuffle=True,
+                  train_bs=hyper_params["train_batch_size"],
+                  test_bs=hyper_params["test_batch_size"],
+                  epoch=hyper_params["EPOCHS"],
+                  max_length=hyper_params["MAX_WORD_LENGTH"])
+
+hyper_params['vocab_size'] = len(dataset.word2idx)
+hyper_params['label_size'] = len(dataset.label2idx)
+
+est = tf.estimator.Estimator(model_fn=model_fn,
+                             params=hyper_params,
+                             model_dir=data_out_path)
+
+# pred = est.predict(input_fn=dataset.eval_input_fn().take(1))
+# print('pred: ', list(pred))
+
+for texts, label_origin in dataset.eval_input_fn().take(1):
+    print(texts['x'], label_origin)
+    # print(dataset.sequence_to_text(texts))
+    pred = est.predict(texts['x'])
+    # pred = [str(logits) for logits in pred]
+    print('pred: ', pred)
+# valid[ld_params['EXAM_NUM']] = est.predict(dataset.eval_input_fn, steps=10)
 # print(valid)
-# with open(result_file, 'w+') as res:
-#     res.write(json.dumps(str(valid)))
