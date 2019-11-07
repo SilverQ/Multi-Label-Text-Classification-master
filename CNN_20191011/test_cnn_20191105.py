@@ -331,12 +331,13 @@ def model_fn(features, labels, mode, params):
                                                            'recall': recall})
 
     elif PREDICT:
+        pred = tf.nn.sigmoid(logits)
         return tf.estimator.EstimatorSpec(
             mode=mode,
             predictions={
-                'prob': tf.nn.sigmoid(logits),
-            }
-        )
+                # 'prob': tf.nn.sigmoid(logits),
+                'prob': tf.round(pred)})
+
     plot_model(model_fn(), to_file=data_out_path + 'model.png')
 
     return tf.estimator.EstimatorSpec(
@@ -423,14 +424,18 @@ est = tf.estimator.Estimator(model_fn=model_fn,
                              params=hyper_params,
                              model_dir=data_out_path)
 
-# pred = est.predict(input_fn=dataset.eval_input_fn().take(1))
-# print('pred: ', list(pred))
+pred = est.predict(input_fn=dataset.eval_input_fn)
+# print('pred: ', pred)
+for item in pred:
+    print(item)
 
-for texts, label_origin in dataset.eval_input_fn().take(1):
-    print(texts['x'], label_origin)
-    # print(dataset.sequence_to_text(texts))
-    pred = est.predict(texts['x'])
-    # pred = [str(logits) for logits in pred]
-    print('pred: ', pred)
-# valid[ld_params['EXAM_NUM']] = est.predict(dataset.eval_input_fn, steps=10)
-# print(valid)
+# for texts, label_origin in dataset.eval_input_fn().take(1):
+#     # print(texts['x'], label_origin)
+#     pred = est.predict(texts['x'][0])
+#     print(pred)
+#     for item in pred:
+#         print(item)
+#     # pred = [str(logits) for logits in pred]
+#     # print('pred: ', pred)
+# # valid[ld_params['EXAM_NUM']] = est.predict(dataset.eval_input_fn, steps=10)
+# # print(valid)
