@@ -336,6 +336,7 @@ def model_fn(features, labels, mode, params):
             mode=mode,
             predictions={
                 # 'prob': tf.nn.sigmoid(logits),
+                # tf.to_int32(a > 0.5)
                 'prob': tf.round(pred)})
 
     plot_model(model_fn(), to_file=data_out_path + 'model.png')
@@ -426,8 +427,10 @@ est = tf.estimator.Estimator(model_fn=model_fn,
 
 pred = est.predict(input_fn=dataset.eval_input_fn)
 # print('pred: ', pred)
-for item in pred:
-    print(item)
+# for item in pred:
+#     print(item)
+pred = [str(logits) for logits in pred]
+print(pred[:10])
 
 # for texts, label_origin in dataset.eval_input_fn().take(1):
 #     # print(texts['x'], label_origin)
