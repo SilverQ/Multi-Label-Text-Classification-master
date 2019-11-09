@@ -425,15 +425,27 @@ est = tf.estimator.Estimator(model_fn=model_fn,
                              params=hyper_params,
                              model_dir=data_out_path)
 
+# 성공은 했는데, 파일을 통째로 돌려서 오래걸림
+# pred = est.predict(input_fn=dataset.eval_input_fn)
+# pred = [str(logits) for logits in pred]
+# print(pred[:10])
+
+# 좀 잘라서 돌릴 방법을 찾아보쟈
 pred = est.predict(input_fn=dataset.eval_input_fn)
-# print('pred: ', pred)
-# for item in pred:
-#     print(item)
 pred = [str(logits) for logits in pred]
 print(pred[:10])
 
+
+print('\n')
+print('true label: ', dataset.eval_input_fn())
+# (x, label) = dataset.eval_input_fn
+# print('true label: ', label)
+# print('pred: ', pred)
+# for item in pred:
+#     print(item)
+
 # for texts, label_origin in dataset.eval_input_fn().take(1):
-#     # print(texts['x'], label_origin)
+#     print(texts['x'], label_origin)
 #     pred = est.predict(texts['x'][0])
 #     print(pred)
 #     for item in pred:
